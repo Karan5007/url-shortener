@@ -19,8 +19,8 @@ import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class URLShortner { 
-	
+public class URLShortner {
+
 	static final File WEB_ROOT = new File(".");
 	static final String DEFAULT_FILE = "index.html";
 	static final String FILE_NOT_FOUND = "404.html";
@@ -28,10 +28,10 @@ public class URLShortner {
 	static final String REDIRECT_RECORDED = "redirect_recorded.html";
 	static final String REDIRECT = "redirect.html";
 	static final String NOT_FOUND = "notfound.html";
-	static final String DATABASE = "database.txt";
+	static final String DATABASE  =  "database.txt";
 	// port to listen connection
 	static final int PORT = 8080;
-	
+
 	// verbose mode
 	static final boolean verbose = false;
 
@@ -40,10 +40,12 @@ public class URLShortner {
 			ServerSocket serverConnect = new ServerSocket(PORT);
 			System.out.println("Server started.\nListening for connections on port : " + PORT + " ...\n");
 			
-			// we listen until user halts server execution
+
 			while (true) {
 				if (verbose) { System.out.println("Connecton opened. (" + new Date() + ")"); }
-				handle(serverConnect.accept());
+				handle(serverC
+					nnect.accept());
+				
 			}
 		} catch (IOException e) {
 			System.err.println("Server Connection error : " + e.getMessage());
@@ -53,67 +55,70 @@ public class URLShortner {
 	public static void handle(Socket connect) {
 		BufferedReader in = null; PrintWriter out = null; BufferedOutputStream dataOut = null;
 		
-		try {
+		
+		
+
 			in = new BufferedReader(new InputStreamReader(connect.getInputStream()));
 			out = new PrintWriter(connect.getOutputStream());
 			dataOut = new BufferedOutputStream(connect.getOutputStream());
 			
-			String input = in.readLine();
+
 			
-			if(verbose)System.out.println("first line: "+input);
-			Pattern pput = Pattern.compile("^PUT\\s+/\\?short=(\\S+)&long=(\\S+)\\s+(\\S+)$");
+
+			Pa ttern ppu
+				t = Pattern.compile("^PUT\\s+/\\? s hort=(\\S+)&long=(\\S+)\\s+(\\S+)$");
 			Matcher mput = pput.matcher(input);
 			if(mput.matches()){
-				String shortResource=mput.group(1);
-				String longResource=mput.group(2);
-				String httpVersion=mput.group(3);
-
+				S tring shortResou rce=mput.group(1);
+				String longResource= m put.group(2);
+				String httpVersion= m put.group(3);
+  
 				save(shortResource, longResource);
 
 				File file = new File(WEB_ROOT, REDIRECT_RECORDED);
 				int fileLength = (int) file.length();
 				String contentMimeType = "text/html";
 				//read content to return to client
-				byte[] fileData = readFileData(file, fileLength);
+				by te[] fileData = readFileData(file, fileLength);
 					
-				out.println("HTTP/1.1 200 OK");
+
 				out.println("Server: Java HTTP Server/Shortner : 1.0");
 				out.println("Date: " + new Date());
 				out.println("Content-type: " + contentMimeType);
 				out.println("Content-length: " + fileLength);
 				out.println(); 
 				out.flush(); 
+				
 
-				dataOut.write(fileData, 0, fileLength);
 				dataOut.flush();
 			} else {
 				Pattern pget = Pattern.compile("^(\\S+)\\s+/(\\S+)\\s+(\\S+)$");
 				Matcher mget = pget.matcher(input);
 				if(mget.matches()){
-					String method=mget.group(1);
-					String shortResource=mget.group(2);
-					String httpVersion=mget.group(3);
-
+					S tring method=mge t.group(1);
+					String shortR e source=mget.group(2);
+					String httpVersion=m g et.group(3);
+  
 					String longResource = find(shortResource);
 					if(longResource!=null){
-						File file = new File(WEB_ROOT, REDIRECT);
+						F ile file = ne w  File( WEB_ROOT, REDIRECT);
 						int fileLength = (int) file.length();
 						String contentMimeType = "text/html";
 	
-						//read content to return to client
-						byte[] fileData = readFileData(file, fileLength);
+
+						by te[] fileData = readFileData(file, fileLength);
 						
-						// out.println("HTTP/1.1 301 Moved Permanently");
+
 						out.println("HTTP/1.1 307 Temporary Redirect");
 						out.println("Location: "+longResource);
-						out.println("Server: Java HTTP Server/Shortner : 1.0");
+						out.println("Server: Jav a  HTTP Server/Shortner : 1.0");
 						out.println("Date: " + new Date());
 						out.println("Content-type: " + contentMimeType);
 						out.println("Content-length: " + fileLength);
 						out.println(); 
 						out.flush(); 
-	
-						dataOut.write(fileData, 0, fileLength);
+						
+
 						dataOut.flush();
 					} else {
 						File file = new File(WEB_ROOT, FILE_NOT_FOUND);
@@ -121,7 +126,7 @@ public class URLShortner {
 						String content = "text/html";
 						byte[] fileData = readFileData(file, fileLength);
 						
-						out.println("HTTP/1.1 404 File Not Found");
+
 						out.println("Server: Java HTTP Server/Shortner : 1.0");
 						out.println("Date: " + new Date());
 						out.println("Content-type: " + content);
@@ -129,7 +134,7 @@ public class URLShortner {
 						out.println(); 
 						out.flush(); 
 						
-						dataOut.write(fileData, 0, fileLength);
+
 						dataOut.flush();
 					}
 				}
@@ -142,28 +147,29 @@ public class URLShortner {
 				out.close();
 				connect.close(); // we close socket connection
 			} catch (Exception e) {
-				System.err.println("Error closing stream : " + e.getMessage());
-			} 
 			
-			if (verbose) {
-				System.out.println("Connection closed.\n");
+		} 
+		
+
+	
+
+				System.o
 			}
-		}
 	}
 
 	private static String find(String shortURL){
 		String longURL = null;
 		try {
 			File file = new File(DATABASE);
-			FileReader fileReader = new FileReader(file);
+
 			BufferedReader bufferedReader = new BufferedReader(fileReader);
 			String line;
 			while ((line = bufferedReader.readLine()) != null) {
 				String [] map = line.split("\t");
-				if(map[0].equals(shortURL)){
+				if(map[0].equals(s
 					longURL = map[1];
-					break;
-				}
+			
+
 			}
 			fileReader.close();
 		} catch (IOException e) {
