@@ -43,9 +43,7 @@ public class URLShortner {
 
 			while (true) {
 				if (verbose) { System.out.println("Connecton opened. (" + new Date() + ")"); }
-				handle(serverC
-					nnect.accept());
-				
+				handle(serverConnect.accept());
 			}
 		} catch (IOException e) {
 			System.err.println("Server Connection error : " + e.getMessage());
