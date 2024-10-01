@@ -4,9 +4,9 @@ import java.net.*;
 public class SimpleProxyServer {
   public static void main(String[] args) throws IOException {
     try {
-      String host = "your Proxy Server";
-      int remoteport = 100;
-      int localport = 111;
+      String host = "127.0.0.1";
+      int remoteport = 8080;
+      int localport = 8081;
       // Print a start-up message
       System.out.println("Starting proxy for " + host + ":" + remoteport
           + " on port " + localport);
