@@ -6,7 +6,7 @@ public class SimpleProxyServer {
 	public static void main(String[] args) throws IOException {
 		try {
 			String host = "127.0.0.1";
-			int remoteport = 8080;
+			int remoteport = 8082;
 			int localport = 8081;
 			// Print a start-up message
 			System.out.println("Starting proxy for " + host + ":" + remoteport
