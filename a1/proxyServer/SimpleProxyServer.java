@@ -92,7 +92,7 @@ public class SimpleProxyServer {
 												
 					}
 					
-					// check if parsedRequest.method == add or remove
+					// TODO: check if parsedRequest.method == add or remove (for adding servers/getting rid of them)
 
 
 
