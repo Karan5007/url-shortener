@@ -11,6 +11,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
@@ -30,16 +31,24 @@ public class URLShortner {
 	static final String NOT_FOUND = "notfound.html";
 	static URLShortnerDB database=null;
 	// port to listen connection
-	static final int PORT = 8080;
 	
 	// verbose mode
 	static final boolean verbose = false;
 
 	public static void main(String[] args) {
+		if (args.length < 2) {
+            System.err.println("Usage: java URLShortner <IP_ADDRESS> <PORT>");
+            System.exit(1);
+        }
+
+        // Extract the IP address and port from the command-line arguments
+        String ipAddress = args[0];
+        int port = Integer.parseInt(args[1]);
+
 		database = new URLShortnerDB();
 		try {
-			ServerSocket serverConnect = new ServerSocket(PORT);
-			System.out.println("Server started.\nListening for connections on port : " + PORT + " ...\n");
+			ServerSocket serverConnect = new ServerSocket(port, 50, InetAddress.getByName(ipAddress));
+			System.out.println("Server started.\nListening for connections on port : " + ipAddress +":"+ port + " ...\n");
 			
 			// we listen until user halts server execution
 			while (true) {
