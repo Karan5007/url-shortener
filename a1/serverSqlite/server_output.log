@@ -1,0 +1,19 @@
+Server started.
+Listening for connections on port : 8082 ...
+
+Connection opened. (Wed Oct 02 16:27:41 EDT 2024)
+Connection opened. (Wed Oct 02 16:27:47 EDT 2024)
+Connection opened. (Wed Oct 02 16:27:47 EDT 2024)
+Connection opened. (Wed Oct 02 16:27:47 EDT 2024)
+Connection opened. (Wed Oct 02 16:27:47 EDT 2024)
+Connection closed on thread: pool-1-thread-2
+Server socket closed due to an exception.
+Server Connection error : Socket closed
+Connection closed on thread: pool-1-thread-1
+Connection closed on thread: pool-1-thread-3
+Connection closed on thread: pool-1-thread-4
+Log files and directory cleaned up.
+Log files and directory cleaned up.
+Log files and directory cleaned up.
+Log files and directory cleaned up.
+Log files and directory cleaned up.

@@ -36,16 +36,14 @@ public class URLShortner {
     static ServerSocket serverConnect = null;
 
 	static final int MAX_THREADS = 10;
+	static File logDir = new File("thread_logs");
+
 	// verbose mode
 	static final boolean verbose = true;
+	
 
 	public static void main(String[] args) {
-		ExecutorService threadPool = Executors.newFixedThreadPool(MAX_THREADS);  // Thread pool
-        File logDir = new File("thread_logs");
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            cleanUpLogs(logDir);
-        }));
-
+		ExecutorService threadPool = Executors.newFixedThreadPool(MAX_THREADS);  
 		database = new URLShortnerDB();
 		
 		try {
@@ -62,6 +60,7 @@ public class URLShortner {
 		} catch (IOException e) {
 			System.err.println("Server Connection error : " + e.getMessage());
 			closeSocket();
+			cleanUpLogs();
 		}
 	}
 
@@ -78,10 +77,11 @@ public class URLShortner {
 			
             String threadName = Thread.currentThread().getName();
 			String logFileName = "thread_logs/thread_" + threadName + "_log.txt";
+			if (!new File("thread_logs").exists()) {
+   				new File("thread_logs").mkdir(); 
+			}
 
-			logWriter = new PrintWriter(new BufferedWriter(new FileWriter(logFileName, true))); // Open in append mode
-
-
+			logWriter = new PrintWriter(new BufferedWriter(new FileWriter(logFileName, true))); 
 			String input = in.readLine();
 			
 			if (verbose) {
@@ -96,7 +96,11 @@ public class URLShortner {
 				String longResource=mput.group(2);
 				String httpVersion=mput.group(3);
 
-				database.save(shortResource, longResource);
+				synchronized(database) {
+					database.save(shortResource, longResource);
+				}
+
+				
 
 				File file = new File(WEB_ROOT, REDIRECT_RECORDED);
 				int fileLength = (int) file.length();
@@ -179,9 +183,9 @@ public class URLShortner {
                 if (verbose) {
                     System.out.println("Connection closed on thread: " + Thread.currentThread().getName());
                 }
-				closeSocket();
             } catch (Exception e) {
 				closeSocket();
+				cleanUpLogs();
                 System.err.println("Error closing stream: " + e.getMessage());
             }
 		}
@@ -189,7 +193,7 @@ public class URLShortner {
 
 	
 
-	private static void cleanUpLogs(File logDir) {
+	private static void cleanUpLogs() {
         if (logDir.exists() && logDir.isDirectory()) {
             File[] logFiles = logDir.listFiles();
             if (logFiles != null) {
@@ -204,7 +208,7 @@ public class URLShortner {
 	private static void closeSocket() {
 		if (serverConnect != null && !serverConnect.isClosed()) {
 		    try {
-		        serverConnect.close(); // Close the server socket to free the port
+		        serverConnect.close();
 		        System.out.println("Server socket closed due to an exception.");
 		    } catch (IOException closeEx) {
 		        System.err.println("Error closing server socket after exception: " + closeEx.getMessage());
