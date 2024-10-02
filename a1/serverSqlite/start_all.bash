@@ -1,11 +1,13 @@
-hosts=("dh2026pc22", "dh2026pc23", "dh2026pc24", "dh2026pc25")
-
+#!/bin/bash
 remote_dir="/student/abdul322/a1group05/a1/serverSqlite"
+hosts_file="hosts.txt"
 
-for host in "${hosts[@]}"; do
+[ ! -f "$hosts_file" ] && { echo "Hosts file not found"; exit 1; }
+
+for host in $(cat "$hosts_file"); do
     echo "Starting URLShortner on $host"
 
-    ssh $host "cd $remote_dir && ./runit.bash"
+    ssh $host "source ~/.bashrc && cd $remote_dir && ./runit.bash"
     
     echo "Started URLShortner on $host"
 done

@@ -11,12 +11,13 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.util.Date;
 import java.util.StringTokenizer;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,46 +32,63 @@ public class URLShortner {
 	static final String NOT_FOUND = "notfound.html";
 	static URLShortnerDB database=null;
 	// port to listen connection
-	
+	static final int PORT = 8082;
+    static ServerSocket serverConnect = null;
+
+	static final int MAX_THREADS = 10;
 	// verbose mode
-	static final boolean verbose = false;
+	static final boolean verbose = true;
 
 	public static void main(String[] args) {
-		if (args.length < 2) {
-            System.err.println("Usage: java URLShortner <IP_ADDRESS> <PORT>");
-            System.exit(1);
-        }
-
-        // Extract the IP address and port from the command-line arguments
-        String ipAddress = args[0];
-        int port = Integer.parseInt(args[1]);
+		ExecutorService threadPool = Executors.newFixedThreadPool(MAX_THREADS);  // Thread pool
+        File logDir = new File("thread_logs");
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            cleanUpLogs(logDir);
+        }));
 
 		database = new URLShortnerDB();
+		
 		try {
-			ServerSocket serverConnect = new ServerSocket(port, 50, InetAddress.getByName(ipAddress));
-			System.out.println("Server started.\nListening for connections on port : " + ipAddress +":"+ port + " ...\n");
+			serverConnect = new ServerSocket(PORT);
+			System.out.println("Server started.\nListening for connections on port : " + PORT + " ...\n");
 			
 			// we listen until user halts server execution
 			while (true) {
-				if (verbose) { System.out.println("Connecton opened. (" + new Date() + ")"); }
-				handle(serverConnect.accept());
+				if (verbose) { System.out.println("Connection opened. (" + new Date() + ")"); }
+
+				final Socket clientSocket = serverConnect.accept();
+				threadPool.execute(()-> handle(clientSocket));
 			}
 		} catch (IOException e) {
 			System.err.println("Server Connection error : " + e.getMessage());
+			closeSocket();
 		}
 	}
 
+
+
 	public static void handle(Socket connect) {
-		BufferedReader in = null; PrintWriter out = null; BufferedOutputStream dataOut = null;
+		BufferedReader in = null; PrintWriter out = null; BufferedOutputStream dataOut = null; PrintWriter logWriter = null;
 		
 		try {
 			in = new BufferedReader(new InputStreamReader(connect.getInputStream()));
 			out = new PrintWriter(connect.getOutputStream());
 			dataOut = new BufferedOutputStream(connect.getOutputStream());
 			
+			
+            String threadName = Thread.currentThread().getName();
+			String logFileName = "thread_logs/thread_" + threadName + "_log.txt";
+
+			logWriter = new PrintWriter(new BufferedWriter(new FileWriter(logFileName, true))); // Open in append mode
+
+
 			String input = in.readLine();
 			
-			if(verbose)System.out.println("first line: "+input);
+			if (verbose) {
+                logWriter.println("First line: " + input);
+                logWriter.println("Handling request from: " + connect.getInetAddress() + " on thread: " + threadName);
+            }
+
 			Pattern pput = Pattern.compile("^PUT\\s+/\\?short=(\\S+)&long=(\\S+)\\s+(\\S+)$");
 			Matcher mput = pput.matcher(input);
 			if(mput.matches()){
@@ -145,19 +163,52 @@ public class URLShortner {
 				}
 			}
 		} catch (Exception e) {
-			System.err.println("Server error");
+			if (logWriter != null) {
+                logWriter.println("Server error: " + e.getMessage());
+            }
+            System.err.println("Server error: " + e.getMessage());
 		} finally {
 			try {
-				in.close();
-				out.close();
-				connect.close(); // we close socket connection
-			} catch (Exception e) {
-				System.err.println("Error closing stream : " + e.getMessage());
-			} 
-			
-			if (verbose) {
-				System.out.println("Connection closed.\n");
-			}
+                if (in != null) in.close();
+                if (out != null) out.close();
+                if (connect != null) connect.close();
+                if (logWriter != null) {
+                    logWriter.println("Connection closed on thread: " + Thread.currentThread().getName());
+                    logWriter.close();
+                }
+                if (verbose) {
+                    System.out.println("Connection closed on thread: " + Thread.currentThread().getName());
+                }
+				closeSocket();
+            } catch (Exception e) {
+				closeSocket();
+                System.err.println("Error closing stream: " + e.getMessage());
+            }
+		}
+	}
+
+	
+
+	private static void cleanUpLogs(File logDir) {
+        if (logDir.exists() && logDir.isDirectory()) {
+            File[] logFiles = logDir.listFiles();
+            if (logFiles != null) {
+                for (File logFile : logFiles) {
+                    logFile.delete();
+                }
+            }
+            System.out.println("Log files and directory cleaned up.");
+        }
+    }
+
+	private static void closeSocket() {
+		if (serverConnect != null && !serverConnect.isClosed()) {
+		    try {
+		        serverConnect.close(); // Close the server socket to free the port
+		        System.out.println("Server socket closed due to an exception.");
+		    } catch (IOException closeEx) {
+		        System.err.println("Error closing server socket after exception: " + closeEx.getMessage());
+		    }
 		}
 	}
 
