@@ -18,7 +18,6 @@ public class URLShortnerDB {
 			String sql = """
 			pragma synchronous = normal;
 			pragma journal_mode = WAL;
-			pragma mmap_size = 30000000000;
 			""";
 			Statement stmt  = conn.createStatement();
 			stmt.executeUpdate(sql);
