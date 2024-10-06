@@ -188,8 +188,12 @@ public class SimpleProxyServer {
 
 	private static ParsedRequest parseRequest(String inputLine) {
     	//copying what we had form the node code.
+		Pattern padd = Pattern.compile("^PUT\\s+/\\?ipAddr=(\\S+)$");
+
         Pattern pput = Pattern.compile("^PUT\\s+/\\?short=(\\S+)&long=(\\S+)\\s+(\\S+)$");
         Pattern pget = Pattern.compile("^(GET)\\s+/(\\S+)\\s+(HTTP/\\S+)$");
+
+		Matcher madd = padd.matcher(inputLine);
 
         Matcher mput = pput.matcher(inputLine);
         Matcher mget = pget.matcher(inputLine);
@@ -203,7 +207,10 @@ public class SimpleProxyServer {
             String shortResource = mget.group(2);
             String httpVersion = mget.group(3);
             return new ParsedRequest("GET", shortResource, null, httpVersion);
-        }
+        } else if(madd.matches()) {
+			String shortResource = mput.group(1);
+            return new ParsedRequest("add", shortResource, null, null);
+		}
 
         return null; // Unknown request type, edit this later to add new servers/delete old servers.
     }
