@@ -55,9 +55,12 @@ public class SimpleProxyServer {
 			Socket client = null, server = null;
 			try {
 				// Wait for a connection on the local port
+				System.out.println("waiting....  ");
+
 				client = ss.accept();
 				// =====================================
 				// Start threads
+				System.out.println("received connection:  " + client);
 				new Thread(new ProxyTask(client, remoteport)).start();
 
 			} catch (IOException e){
@@ -113,7 +116,9 @@ public class SimpleProxyServer {
 					
 					// TODO: check if parsedRequest.method == add or remove (for adding servers/getting rid of them)
 					if(parsedRequest.method == "add"){
+						System.out.println("added node:  " + parsedRequest.shortResource);
 						ch.addNode(parsedRequest.shortResource);
+						System.out.println(ch.getAssignedNodes());
 					}else if(parsedRequest.method == "remove"){ // TODO: account for data.
 						ch.removeNode(parsedRequest.shortResource); // need to account for data moving
  					}
@@ -208,7 +213,8 @@ public class SimpleProxyServer {
             String httpVersion = mget.group(3);
             return new ParsedRequest("GET", shortResource, null, httpVersion);
         } else if(madd.matches()) {
-			String shortResource = mput.group(1);
+			String shortResource = madd.group(1);
+
             return new ParsedRequest("add", shortResource, null, null);
 		}
 

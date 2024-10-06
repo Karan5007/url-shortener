@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -45,6 +46,43 @@ public class URLShortner {
 	public static void main(String[] args) {
 		ExecutorService threadPool = Executors.newFixedThreadPool(MAX_THREADS);  
 		database = new URLShortnerDB();
+		//TODO: send a signal to connect 
+		String host = "142.1.46.25"; // Ip address of simply proxy server
+		Socket server = null;
+
+		int port = 8081;
+		try {
+			server = new Socket(host, port);
+		} catch (IOException e) {
+			System.out.println("unable to connect to server");
+			return; 
+		}
+		InputStream streamFromServer = null;
+		OutputStream streamToServer = null;
+		// Get server streams
+		try {
+			streamFromServer = server.getInputStream();
+			// Your code to work with the input stream
+		} catch (IOException e) {
+			e.printStackTrace(); // Handle the exception, log it or inform the user
+		}
+		try {
+			streamToServer = server.getOutputStream();
+			// Your code to work with the input stream
+		} catch (IOException e) {
+			e.printStackTrace(); // Handle the exception, log it or inform the user
+		}
+
+		PrintWriter outToServer = new PrintWriter(streamToServer);
+		outToServer.println("PUT /?ipAddr=" + "142.1.46.25"); // Should be sending the ip address of the DB node
+		outToServer.println(); // End of headers
+		outToServer.flush();
+	
+		// if (streamFromServer != null) streamFromServer.close();
+
+		// if (streamToServer != null) streamToServer.close();
+
+		// if (server != null) server.close();
 		//open up our port to listen
 		try {
 			serverConnect = new ServerSocket(PORT);
@@ -63,9 +101,10 @@ public class URLShortner {
 			cleanUpLogs();
 		}
 
-		//TODO: send a signal to connect 
-		
+
 	}
+
+
 
 	
 
