@@ -39,7 +39,7 @@ public class URLShortner {
 	static File logDir = new File("thread_logs");
 
 	// verbose mode
-	static final boolean verbose = true;
+	static final boolean verbose = false;
 	
 
 	public static void main(String[] args) {

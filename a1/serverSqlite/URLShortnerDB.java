@@ -29,7 +29,7 @@ public class URLShortnerDB {
 	}
 
 	private Connection conn=null;
-	public URLShortnerDB(){ this("jdbc:sqlite:database.db"); }
+	public URLShortnerDB(){ this("jdbc:sqlite:/virtual/abdul322/database.db"); }
 	public URLShortnerDB(String url){ conn = URLShortnerDB.connect(url); }
 
 			   
