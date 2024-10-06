@@ -45,7 +45,7 @@ public class URLShortner {
 	public static void main(String[] args) {
 		ExecutorService threadPool = Executors.newFixedThreadPool(MAX_THREADS);  
 		database = new URLShortnerDB();
-		
+		//open up our port to listen
 		try {
 			serverConnect = new ServerSocket(PORT);
 			System.out.println("Server started.\nListening for connections on port : " + PORT + " ...\n");
@@ -62,7 +62,12 @@ public class URLShortner {
 			closeSocket();
 			cleanUpLogs();
 		}
+
+		//TODO: send a signal to connect 
+		
 	}
+
+	
 
 
 
