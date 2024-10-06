@@ -4,7 +4,7 @@ import java.util.*;
 
 public class ConsistentHashing {
     int numVirtualNodes;
-    SortedMap<Integer, String> circle = new TreeMap<>();
+    TreeMap<Integer, String> circle = new TreeMap<>();
     Map<String, Set<Integer>> nodeCircleMap = new HashMap<>();
 
     public ConsistentHashing() {
@@ -41,23 +41,43 @@ public class ConsistentHashing {
         }
     }
 
-    public String getNode(String key) {
+    public List<String> getNodes(String key) {
+        List<String> assignedNodes = new ArrayList<>();
         if (circle.isEmpty()) {
-            return null;
+            return assignedNodes;
         }
-        int hash = hash(key);
+        Integer hash = hash(key);
+        Integer hash2 = -1;
         if (!circle.containsKey(hash)) {
             SortedMap<Integer, String> tailMap = circle.tailMap(hash);
             if(tailMap.isEmpty()){
                 hash = circle.firstKey();
+                hash2 = findNextHash(circle.get(hash), hash);
             }
             else{
                 hash = tailMap.firstKey();
+                hash2 = findNextHash(circle.get(hash), hash);
             }
         }
-        return circle.get(hash);
+        System.out.println(circle.get(hash));
+        System.out.println(circle.get(hash2));
+
+        assignedNodes.add(circle.get(hash));
+        assignedNodes.add(circle.get(hash2));
+        return assignedNodes;
     }
     
+    public int findNextHash(String first, Integer hash) {
+        String node = first;
+        while(node == first){
+            hash = circle.higherKey(hash);
+            if(hash == null){
+                hash = circle.firstKey();
+            }
+            node = circle.get(hash);
+        }
+        return hash;
+    }
     public Map<String, Set<Integer>> getAssignedNodes() {
         return Collections.unmodifiableMap(nodeCircleMap);
     }

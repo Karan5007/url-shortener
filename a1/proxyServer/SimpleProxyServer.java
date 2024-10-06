@@ -1,5 +1,7 @@
 import java.io.*;
 import java.net.*;
+import java.util.Arrays;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -7,13 +9,28 @@ public class SimpleProxyServer {
 
 	public static void main(String[] args) throws IOException {
 		try {
-			// String host = "127.0.0.1"; // commenting this out, since we want diffrent hosts
+			String host = "127.0.0.1"; // commenting this out, since we want diffrent hosts
 			int remoteport = 8082;
 			int localport = 8081;
 			// Print a start-up message
 			// System.out.println("Starting proxy for " + host + ":" + remoteport + " on port " + localport); // old print statement
 			System.out.println("Starting proxy for hosting  on port remote port: " + remoteport
 					+ "and local port " + localport);
+
+			
+
+			// List<String> nodes = Arrays.asList("192.168.0.1", "192.168.0.2", "192.168.0.3");
+			// ConsistentHashing ch = new ConsistentHashing();
+			// ch.addNode("192.168.0.1");
+			// ch.addNode("192.168.0.2");
+			// ch.addNode("192.168.0.3");
+			// String key = "my-data";
+			// List<String> nodesForKey = ch.getNodes(key);
+
+			// System.out.println("Replicated nodes for key " + key + ": " + nodesForKey);
+
+			// System.out.println("Assigned nodes" + ch.getAssignedNodes());
+
 
 			// And start running the server
 			runServer(host, remoteport, localport); // never returns
@@ -52,12 +69,16 @@ public class SimpleProxyServer {
 	static class ProxyTask implements Runnable {
         private Socket client;
         private String host; //node
+		private String replicationHost;
         private int remoteport; // port on node
+		ConsistentHashing ch;
+
 
         public ProxyTask(Socket clientSocket, int remoteport) {
             this.client = clientSocket;
             this.host = null;
             this.remoteport = remoteport;
+			this.ch = new ConsistentHashing();
         }
 
         @Override
@@ -93,13 +114,22 @@ public class SimpleProxyServer {
 					}
 					
 					// TODO: check if parsedRequest.method == add or remove (for adding servers/getting rid of them)
-
+					if(parsedRequest.method == "add"){
+						ch.addNode(parsedRequest.shortResource);
+					}else if(parsedRequest.method == "remove"){
+						ch.removeNode(parsedRequest.shortResource); // need to account for data moving
+ 					}
 
 
 					// TODO: use parseRequest.shortResponse to hash and figure out server host
+					String url = parsedRequest.shortResource;
+					List<String> assignedNodes = ch.getNodes(url);
+					this.host = assignedNodes.get(0);
+					this.replicationHost = assignedNodes.get(1); // How to account if there is only 1 node??
+					
 					this.host = "127.0.0.1"; // set host to the orginal host for now
 					
-					
+					// Add replication stuff
 					// Make a connection to the real server.
 					// If we cannot connect to the server, send an error to the
 					// client, disconnect, and continue waiting for connections.
