@@ -108,15 +108,13 @@ public class SimpleProxyServer {
 						out.flush();
 						client.close();
 						return;
-
-						// TODO: do we want to raise a custom error for this?
 												
 					}
 					
 					// TODO: check if parsedRequest.method == add or remove (for adding servers/getting rid of them)
 					if(parsedRequest.method == "add"){
 						ch.addNode(parsedRequest.shortResource);
-					}else if(parsedRequest.method == "remove"){
+					}else if(parsedRequest.method == "remove"){ // TODO: account for data.
 						ch.removeNode(parsedRequest.shortResource); // need to account for data moving
  					}
 
@@ -144,7 +142,7 @@ public class SimpleProxyServer {
 								+ this.remoteport + ":\n" + e + "\n");
 						out.flush();
 						client.close();
-						return; //TODO: Check - is this the best way to stop threads? 
+						return; 
 					}
 						
 					// Get server streams
