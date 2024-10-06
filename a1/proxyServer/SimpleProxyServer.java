@@ -33,7 +33,7 @@ public class SimpleProxyServer {
 
 
 			// And start running the server
-			runServer(host, remoteport, localport); // never returns
+			runServer(remoteport, localport); // never returns
 		} catch (Exception e) {
 			System.err.println(e);
 		}
@@ -43,13 +43,13 @@ public class SimpleProxyServer {
 	 * runs a single-threaded proxy server on
 	 * the specified local port. It never returns.
 	 */
-	public static void runServer(String host, int remoteport, int localport)
+	public static void runServer(int remoteport, int localport)
 			throws IOException {
 		// Create a ServerSocket to listen for connections with
 		ServerSocket ss = new ServerSocket(localport);
 
-		final byte[] request = new byte[1024];
-		byte[] reply = new byte[4096];
+		// final byte[] request = new byte[1024];
+		// byte[] reply = new byte[4096];
 
 		while (true) {
 			Socket client = null, server = null;
