@@ -41,7 +41,6 @@ public class URLShortner {
 
 	// verbose mode
 	static final boolean verbose = false;
-	
 
 	public static void main(String[] args) {
 		ExecutorService threadPool = Executors.newFixedThreadPool(MAX_THREADS);  
@@ -49,7 +48,7 @@ public class URLShortner {
 		//TODO: send a signal to connect 
 		String host = "142.1.46.25"; // Ip address of simply proxy server
 		Socket server = null;
-
+		String ipAddress = args[0];
 		int port = 8081;
 		try {
 			server = new Socket(host, port);
@@ -74,7 +73,7 @@ public class URLShortner {
 		}
 
 		PrintWriter outToServer = new PrintWriter(streamToServer);
-		outToServer.println("PUT /?ipAddr=" + "142.1.46.25"); // Should be sending the ip address of the DB node
+		outToServer.println("PUT /?ipAddr=" + ipAddress); // Should be sending the ip address of the DB node
 		outToServer.println(); // End of headers
 		outToServer.flush();
 	

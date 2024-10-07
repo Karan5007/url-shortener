@@ -45,6 +45,8 @@ public class SimpleProxyServer {
 	 */
 	public static void runServer(int remoteport, int localport)
 			throws IOException {
+		ConsistentHashing ch = new ConsistentHashing();
+
 		// Create a ServerSocket to listen for connections with
 		ServerSocket ss = new ServerSocket(localport);
 
@@ -61,7 +63,7 @@ public class SimpleProxyServer {
 				// =====================================
 				// Start threads
 				System.out.println("received connection:  " + client);
-				new Thread(new ProxyTask(client, remoteport)).start();
+				new Thread(new ProxyTask(client, remoteport, ch)).start();
 
 			} catch (IOException e){
 				System.err.println(e);
@@ -77,11 +79,11 @@ public class SimpleProxyServer {
 		ConsistentHashing ch;
 
 
-        public ProxyTask(Socket clientSocket, int remoteport) {
+        public ProxyTask(Socket clientSocket, int remoteport, ConsistentHashing ch) {
             this.client = clientSocket;
             this.host = null;
             this.remoteport = remoteport;
-			this.ch = new ConsistentHashing();
+			this.ch = ch;
         }
 
         @Override
