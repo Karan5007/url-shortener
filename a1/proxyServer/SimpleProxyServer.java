@@ -115,24 +115,35 @@ public class SimpleProxyServer {
 						return;
 												
 					}
+
+					System.out.println("Parsed request: Method = " + parsedRequest.method +
+					", Short URL = " + parsedRequest.shortResource +
+					", Long URL = " + parsedRequest.longResource +
+					", HTTP Version = " + parsedRequest.httpVersion);
 					
 					// TODO: check if parsedRequest.method == add or remove (for adding servers/getting rid of them)
 					if(parsedRequest.method == "add"){
 						System.out.println("added node:  " + parsedRequest.shortResource);
 						ch.addNode(parsedRequest.shortResource);
 						System.out.println(ch.getAssignedNodes());
+						return;
 					}else if(parsedRequest.method == "remove"){ // TODO: account for data.
-						ch.removeNode(parsedRequest.shortResource); // need to account for data moving
+						ch.removeNode(parsedRequest.shortResource); // TODO: need to account for data moving
+						return;
  					}
 
 
 					// TODO: use parseRequest.shortResponse to hash and figure out server host
 					String url = parsedRequest.shortResource;
+
+					//NOTE: commented this out because infinite loop.
 					List<String> assignedNodes = ch.getNodes(url);
 					this.host = assignedNodes.get(0);
 					this.replicationHost = assignedNodes.get(1); // How to account if there is only 1 node??
+					// this.host = "142.1.46.25";
+					System.out.println("Forwarding request to URL shortener at " + this.host + ":" + this.remoteport);
 					
-					this.host = "127.0.0.1"; // set host to the orginal host for now
+					// this.host = "127.0.0.1"; // set host to the orginal host for now
 					
 					// Add replication stuff
 					// Make a connection to the real server.
@@ -163,6 +174,7 @@ public class SimpleProxyServer {
 						handleGetRequest(parsedRequest, streamToServer);
 					} 
 
+					System.out.println("Received for response from URL shortener.");
 					// Read the server's responses
 					// and pass them back to the client.
 					byte[] reply = new byte[4096];
@@ -171,14 +183,16 @@ public class SimpleProxyServer {
 						streamToClient.write(reply, 0, bytesRead);
 						streamToClient.flush();
 					}
+
+					System.out.println("Sending response back to client.");
 					// The server closed its connection to us, so we close our
 					// connection to our client.
 					
 					// Close the streams and sockets
-					streamToClient.close();
-					streamToServer.close();
-					client.close();
-					server.close();
+					// streamToClient.close();
+					// streamToServer.close();
+					// client.close();
+					// server.close();
 				}
             } catch (IOException e) {
                 System.err.println(e);
