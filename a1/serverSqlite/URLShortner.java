@@ -2,6 +2,7 @@ import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.PrintWriter;
+import java.lang.reflect.Proxy;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -19,6 +20,9 @@ import java.util.Date;
 import java.util.StringTokenizer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,6 +39,7 @@ public class URLShortner {
 	// port to listen connection
 	static final int PORT = 8082;
     static ServerSocket serverConnect = null;
+	static Socket server = null;
 
 	static final int MAX_THREADS = 10;
 	static File logDir = new File("thread_logs");
@@ -45,48 +50,25 @@ public class URLShortner {
 	public static void main(String[] args) {
 		ExecutorService threadPool = Executors.newFixedThreadPool(MAX_THREADS);  
 		database = new URLShortnerDB();
+
 		//TODO: send a signal to connect 
 		String host = "142.1.46.25"; // Ip address of simply proxy server
-		Socket server = null;
 		String ipAddress = args[0];
-		int port = 8081;
-		try {
-			server = new Socket(host, port);
-		} catch (IOException e) {
-			System.out.println("unable to connect to server");
-			return; 
-		}
-		InputStream streamFromServer = null;
-		OutputStream streamToServer = null;
-		// Get server streams
-		try {
-			streamFromServer = server.getInputStream();
-			// Your code to work with the input stream
-		} catch (IOException e) {
-			e.printStackTrace(); // Handle the exception, log it or inform the user
-		}
-		try {
-			streamToServer = server.getOutputStream();
-			// Your code to work with the input stream
-		} catch (IOException e) {
-			e.printStackTrace(); // Handle the exception, log it or inform the user
-		}
+		int proxyPort = 8081;
 
-		PrintWriter outToServer = new PrintWriter(streamToServer);
-		outToServer.println("PUT /?ipAddr=" + ipAddress); // Should be sending the ip address of the DB node
-		outToServer.println(); // End of headers
-		outToServer.flush();
+		connectToProxy(host, proxyPort, ipAddress);
 	
-		// if (streamFromServer != null) streamFromServer.close();
-
-		// if (streamToServer != null) streamToServer.close();
-
-		// if (server != null) server.close();
 		//open up our port to listen
 		try {
 			serverConnect = new ServerSocket(PORT);
 			System.out.println("Server started.\nListening for connections on port : " + PORT + " ...\n");
 			
+			
+			ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(1);
+        	scheduler.scheduleAtFixedRate(() -> connectToProxy(host, proxyPort, ipAddress), 0, 60, TimeUnit.SECONDS); // send awake signal every 60 seconds
+
+
+
 			// we listen until user halts server execution
 			while (true) {
 				if (verbose) { System.out.println("Connection opened. (" + new Date() + ")"); }
@@ -104,9 +86,27 @@ public class URLShortner {
 	}
 
 
+	private static void connectToProxy(String host, int port, String ipAddress) {
+		try  {
+			server = new Socket(host, port);
+			System.out.println("Connected to proxy server at " + host + ":" + port);
 
+			InputStream streamFromServer = null;
+			OutputStream streamToServer = null;
+			streamFromServer = server.getInputStream();
+			streamToServer = server.getOutputStream();
+			PrintWriter outToServer = new PrintWriter(streamToServer);
 	
-
+			outToServer.println("PUT /?ipAddr=" + ipAddress);
+			outToServer.println(); 
+			outToServer.flush();
+	
+			System.out.println("Sent awake signal to proxy server at " + host + ":" + port);
+		} catch (IOException e) {
+			System.out.println("Unable to connect to proxy server at " + host + ":" + port + ". Will retry...");
+		}
+	}
+	
 
 
 	public static void handle(Socket connect) {
@@ -132,15 +132,24 @@ public class URLShortner {
                 logWriter.println("Handling request from: " + connect.getInetAddress() + " on thread: " + threadName);
             }
 
-			Pattern pput = Pattern.compile("^PUT\\s+/\\?short=(\\S+)&long=(\\S+)\\s+(\\S+)$");
-			Matcher mput = pput.matcher(input);
+			
+
+			Pattern pput = Pattern.compile("^PUT\\s+/\\?short=(\\S+)&long=(\\S+)(?:&db=(M|R))?\\s+(\\S+)$");
+        	Matcher mput = pput.matcher(input);
 			if(mput.matches()){
 				String shortResource=mput.group(1);
 				String longResource=mput.group(2);
-				String httpVersion=mput.group(3);
+				String dbTarget = mput.group(3);  // db=M or db=R
+				String httpVersion=mput.group(4);
 
-				synchronized(database) {
-					database.save(shortResource, longResource);
+				if (dbTarget == null || "M".equalsIgnoreCase(dbTarget)) {
+					synchronized (database) {
+						database.saveToMain(shortResource, longResource);  // Save to main DB
+					}
+				} else if ("R".equalsIgnoreCase(dbTarget)) {
+					synchronized (database) {
+						database.saveToReplica(shortResource, longResource);  // Save to replica DB
+					}
 				}
 
 				
@@ -162,14 +171,23 @@ public class URLShortner {
 				dataOut.write(fileData, 0, fileLength);
 				dataOut.flush();
 			} else {
-				Pattern pget = Pattern.compile("^(\\S+)\\s+/(\\S+)\\s+(\\S+)$");
+				Pattern pget = Pattern.compile("^(\\S+)\\s+/(\\S+)(?:&db=(M|R))?\\s+(\\S+)$");
 				Matcher mget = pget.matcher(input);
-				if(mget.matches()){
-					String method=mget.group(1);
-					String shortResource=mget.group(2);
-					String httpVersion=mget.group(3);
+				if (mget.matches()) {
+					String method = mget.group(1);
+					String shortResource = mget.group(2);
+					String dbTarget = mget.group(3);  // db=M or db=R, can be null
+					String httpVersion = mget.group(4);
 
-					String longResource = database.find(shortResource);
+					// Default to main DB if db parameter is missing
+					String longResource = null;
+					if (dbTarget == null || "M".equalsIgnoreCase(dbTarget)) {
+						longResource = database.findInMain(shortResource);  // Fetch from main DB
+					} else if ("R".equalsIgnoreCase(dbTarget)) {
+						longResource = database.findInReplica(shortResource);  // Fetch from replica DB
+					}
+
+
 					if(longResource!=null){
 						File file = new File(WEB_ROOT, REDIRECT);
 						int fileLength = (int) file.length();
@@ -222,6 +240,7 @@ public class URLShortner {
                 if (logWriter != null) {
                     logWriter.println("Connection closed on thread: " + Thread.currentThread().getName());
                     logWriter.close();
+					
                 }
                 if (verbose) {
                     System.out.println("Connection closed on thread: " + Thread.currentThread().getName());
