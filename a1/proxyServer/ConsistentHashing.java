@@ -12,7 +12,7 @@ public class ConsistentHashing {
         this.MAX_HASH = 10000;
     }
 
-    private int hash(String key) {
+    public int hash(String key) {
         int hash = 0;
         int prime = 31;  // Use a prime number for better distribution
         for (int i = 0; i < key.length(); i++) {

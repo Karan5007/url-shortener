@@ -194,7 +194,27 @@ public class SimpleProxyServer {
 					
 					// Forward the request based on the parsed type, we know this wont cause an error since we error checked this
 					if (parsedRequest != null && parsedRequest.method.equals("PUT")) {
-						handlePutRequest(parsedRequest, streamToServer);
+						handlePutRequest(parsedRequest, streamToServer, ch.hash(url), 'M');
+						if(replicationNode!=-1){
+							try {
+								server = new Socket(this.replicationHost, this.remoteport);
+							} catch (IOException e) {
+								PrintWriter out = new PrintWriter(streamToClient);
+								out.print("HTTP/1.1 502 Bad Gateway\r\n");
+								out.print("Content-Type: text/plain\r\n");
+								out.print("\r\n");
+								out.print("Proxy server cannot connect to " + this.host + ":"
+										+ this.remoteport + ":\n" + e + "\n");
+								out.flush();
+								client.close();
+								return; 
+							}
+								
+							// Get server streams
+							final OutputStream streamToServer2 = server.getOutputStream();
+							handlePutRequest(parsedRequest, streamToServer, ch.hash(url), 'R');
+						}
+
 					} else if (parsedRequest != null && parsedRequest.method.equals("GET")) {
 						handleGetRequest(parsedRequest, streamToServer);
 					} 
@@ -279,7 +299,7 @@ public class SimpleProxyServer {
     }
 
     // Handle PUT request
-    private static void handlePutRequest(ParsedRequest parsedRequest, OutputStream streamToServer) throws IOException {
+    private static void handlePutRequest(ParsedRequest parsedRequest, OutputStream streamToServer, int hash, String DB) throws IOException {
         PrintWriter outToServer = new PrintWriter(streamToServer);
         outToServer.println("PUT /?short=" + parsedRequest.shortResource + "&long=" + parsedRequest.longResource + " " + parsedRequest.httpVersion);
         outToServer.println("Host: " + parsedRequest.shortResource);
