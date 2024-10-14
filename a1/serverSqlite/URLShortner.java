@@ -117,41 +117,70 @@ public class URLShortner {
 	}
 	
 
-
 	public static void handle(Socket connect) {
-		BufferedReader in = null; PrintWriter out = null; BufferedOutputStream dataOut = null; PrintWriter logWriter = null;
-		
+		BufferedReader in = null;
+		PrintWriter out = null;
+		BufferedOutputStream dataOut = null;
+		PrintWriter logWriter = null;
+	
 		try {
 			in = new BufferedReader(new InputStreamReader(connect.getInputStream()));
 			out = new PrintWriter(connect.getOutputStream());
 			dataOut = new BufferedOutputStream(connect.getOutputStream());
-			
-			
-            String threadName = Thread.currentThread().getName();
+	
+			String threadName = Thread.currentThread().getName();
 			String logFileName = "thread_logs/thread_" + threadName + "_log.txt";
 			if (!new File("thread_logs").exists()) {
-   				new File("thread_logs").mkdir(); 
+				new File("thread_logs").mkdir();
 			}
-
-			logWriter = new PrintWriter(new BufferedWriter(new FileWriter(logFileName, true))); 
+	
+			logWriter = new PrintWriter(new BufferedWriter(new FileWriter(logFileName, true)));
 			String input = in.readLine();
-			
+	
 			if (verbose) {
-                logWriter.println("First line: " + input);
-                logWriter.println("Handling request from: " + connect.getInetAddress() + " on thread: " + threadName);
-            }
-
-			
-
+				logWriter.println("First line: " + input);
+				logWriter.println("Handling request from: " + connect.getInetAddress() + " on thread: " + threadName);
+			}
+	
+			// Handle node addition
+			Pattern pAddNode = Pattern.compile("^PUT\\s+/\\?method=addedNode&hash=(\\d+)&ipAddress=(\\S+)\\s+(\\S+)$");
+			Matcher mAddNode = pAddNode.matcher(input);
+			if (mAddNode.matches()) {
+				int hash = Integer.parseInt(mAddNode.group(1));
+				String ipAddress = mAddNode.group(2);
+				String httpVersion = mAddNode.group(3);
+	
+				// Handle adding a new node
+				handleAddNode(hash, ipAddress);
+	
+				sendResponse(out, dataOut, "HTTP/1.1 200 OK", REDIRECT_RECORDED);
+				return;
+			}
+	
+			// Handle node removal
+			Pattern pRemoveNode = Pattern.compile("^PUT\\s+/\\?method=removedNode&nextIpAddr=(\\S+)\\s+(\\S+)$");
+			Matcher mRemoveNode = pRemoveNode.matcher(input);
+			if (mRemoveNode.matches()) {
+				String nextIpAddr = mRemoveNode.group(1);
+				String httpVersion = mRemoveNode.group(2);
+	
+				// Handle node removal logic
+				handleRemoveNode(nextIpAddr);
+	
+				sendResponse(out, dataOut, "HTTP/1.1 200 OK", REDIRECT_RECORDED);
+				return;
+			}
+	
+			// Handle PUT request for data
 			Pattern pput = Pattern.compile("^PUT\\s+/\\?short=(\\S+)&long=(\\S+)&hash=(\\d+)(?:&db=(M|R))?\\s+(\\S+)$");
 			Matcher mput = pput.matcher(input);
-			if(mput.matches()){
+			if (mput.matches()) {
 				String shortResource = mput.group(1);
-    			String longResource = mput.group(2);
-    			String hash = mput.group(3);  // Capture the hash from the request
-    			String dbTarget = mput.group(4);  // db=M or db=R
-    			String httpVersion = mput.group(5);
-
+				String longResource = mput.group(2);
+				String hash = mput.group(3);
+				String dbTarget = mput.group(4);
+				String httpVersion = mput.group(5);
+	
 				if (dbTarget == null || "M".equalsIgnoreCase(dbTarget)) {
 					synchronized (database) {
 						database.saveToMain(shortResource, longResource, hash);  // Save to main DB with hash
@@ -161,108 +190,151 @@ public class URLShortner {
 						database.saveToReplica(shortResource, longResource, hash);  // Save to replica DB with hash
 					}
 				}
-
-				
-
-				File file = new File(WEB_ROOT, REDIRECT_RECORDED);
-				int fileLength = (int) file.length();
-				String contentMimeType = "text/html";
-				//read content to return to client
-				byte[] fileData = readFileData(file, fileLength);
-					
-				out.println("HTTP/1.1 200 OK");
-				out.println("Server: Java HTTP Server/Shortner : 1.0");
-				out.println("Date: " + new Date());
-				out.println("Content-type: " + contentMimeType);
-				out.println("Content-length: " + fileLength);
-				out.println(); 
-				out.flush(); 
-
-				dataOut.write(fileData, 0, fileLength);
-				dataOut.flush();
-			} else {
-				Pattern pget = Pattern.compile("^(\\S+)\\s+/(\\S+)(?:&db=(M|R))?\\s+(\\S+)$");
-				Matcher mget = pget.matcher(input);
-				if (mget.matches()) {
-					String method = mget.group(1);
-					String shortResource = mget.group(2);
-					String dbTarget = mget.group(3);  // db=M or db=R, can be null
-					String httpVersion = mget.group(4);
-
-					// Default to main DB if db parameter is missing
-					String longResource = null;
-					if (dbTarget == null || "M".equalsIgnoreCase(dbTarget)) {
-						longResource = database.findInMain(shortResource);  // Fetch from main DB
-					} else if ("R".equalsIgnoreCase(dbTarget)) {
-						longResource = database.findInReplica(shortResource);  // Fetch from replica DB
-					}
-
-
-					if(longResource!=null){
-						File file = new File(WEB_ROOT, REDIRECT);
-						int fileLength = (int) file.length();
-						String contentMimeType = "text/html";
 	
-						//read content to return to client
-						byte[] fileData = readFileData(file, fileLength);
-						
-						// out.println("HTTP/1.1 301 Moved Permanently");
-						out.println("HTTP/1.1 307 Temporary Redirect");
-						out.println("Location: "+longResource);
-						out.println("Server: Java HTTP Server/Shortner : 1.0");
-						out.println("Date: " + new Date());
-						out.println("Content-type: " + contentMimeType);
-						out.println("Content-length: " + fileLength);
-						out.println(); 
-						out.flush(); 
+				sendResponse(out, dataOut, "HTTP/1.1 200 OK", REDIRECT_RECORDED);
+				return;
+			}
 	
-						dataOut.write(fileData, 0, fileLength);
-						dataOut.flush();
-					} else {
-						File file = new File(WEB_ROOT, FILE_NOT_FOUND);
-						int fileLength = (int) file.length();
-						String content = "text/html";
-						byte[] fileData = readFileData(file, fileLength);
-						
-						out.println("HTTP/1.1 404 File Not Found");
-						out.println("Server: Java HTTP Server/Shortner : 1.0");
-						out.println("Date: " + new Date());
-						out.println("Content-type: " + content);
-						out.println("Content-length: " + fileLength);
-						out.println(); 
-						out.flush(); 
-						
-						dataOut.write(fileData, 0, fileLength);
-						dataOut.flush();
-					}
+			// Handle GET request
+			Pattern pget = Pattern.compile("^(\\S+)\\s+/(\\S+)(?:&db=(M|R))?\\s+(\\S+)$");
+			Matcher mget = pget.matcher(input);
+			if (mget.matches()) {
+				String method = mget.group(1);
+				String shortResource = mget.group(2);
+				String dbTarget = mget.group(3);
+				String httpVersion = mget.group(4);
+	
+				String longResource;
+				if (dbTarget == null || "M".equalsIgnoreCase(dbTarget)) {
+					longResource = database.findInMain(shortResource);  // Fetch from main DB
+				} else if ("R".equalsIgnoreCase(dbTarget)) {
+					longResource = database.findInReplica(shortResource);  // Fetch from replica DB
+				} else {
+					longResource = null;
+				}
+	
+				if (longResource != null) {
+					sendResponse(out, dataOut, "HTTP/1.1 307 Temporary Redirect", REDIRECT, longResource);
+				} else {
+					sendResponse(out, dataOut, "HTTP/1.1 404 File Not Found", FILE_NOT_FOUND);
 				}
 			}
+
 		} catch (Exception e) {
+
 			if (logWriter != null) {
-                logWriter.println("Server error: " + e.getMessage());
-            }
-            System.err.println("Server error: " + e.getMessage());
+				logWriter.println("Server error: " + e.getMessage());
+			}
+			System.err.println("Server error: " + e.getMessage());
+
 		} finally {
 			try {
-                if (in != null) in.close();
-                if (out != null) out.close();
-                if (connect != null) connect.close();
-                if (logWriter != null) {
-                    logWriter.println("Connection closed on thread: " + Thread.currentThread().getName());
-                    logWriter.close();
-					
-                }
-                if (verbose) {
-                    System.out.println("Connection closed on thread: " + Thread.currentThread().getName());
-                }
-            } catch (Exception e) {
-				closeSocket();
-				cleanUpLogs();
-                System.err.println("Error closing stream: " + e.getMessage());
-            }
+				if (in != null) in.close();
+				if (out != null) out.close();
+				if (dataOut != null) dataOut.close();
+				if (connect != null) connect.close();
+				if (logWriter != null) {
+					logWriter.println("Connection closed on thread: " + Thread.currentThread().getName());
+					logWriter.close();
+				}
+			} catch (Exception e) {
+				System.err.println("Error closing streams or socket: " + e.getMessage());
+			}
+			closeSocket();  
+			cleanUpLogs();  
 		}
 	}
+	
+	private static void sendResponse(PrintWriter out, BufferedOutputStream dataOut, String status, String filePath) throws IOException {
+		sendResponse(out, dataOut, status, filePath, null);
+	}
+	
+	private static void sendResponse(PrintWriter out, BufferedOutputStream dataOut, String status, String filePath, String location) throws IOException {
+		File file = new File(WEB_ROOT, filePath);
+		int fileLength = (int) file.length();
+		String contentMimeType = "text/html";
+		byte[] fileData = readFileData(file, fileLength);
+	
+		out.println(status);
+		if (location != null) {
+			out.println("Location: " + location);
+		}
+		out.println("Server: Java HTTP Server/Shortner : 1.0");
+		out.println("Date: " + new Date());
+		out.println("Content-type: " + contentMimeType);
+		out.println("Content-length: " + fileLength);
+		out.println();
+		out.flush();
+	
+		dataOut.write(fileData, 0, fileLength);
+		dataOut.flush();
+	}
+	
+	private static void handleAddNode(int hash, String ipAddress) {
+		moveReplicaDataToNewNode(ipAddress);
+		moveDataToNewNode(hash, ipAddress);
+	}
+	
+	private static void handleRemoveNode(String nextIpAddr) {
+		System.out.println("Handling node removal. Next node IP: " + nextIpAddr);
+	}
 
+	private static void moveReplicaDataToNewNode(String ipAddress) {
+		System.out.println("Transferring replica data to the newly added node at IP: " + ipAddress);
+	
+		// Fetch data from the replica DB and move it to the new node
+		List<String[]> replicaData = database.fetchReplicaData();
+	
+		for (String[] row : replicaData) {
+			String shortURL = row[0];
+			String longURL = row[1];
+			String hash = row[2];
+	
+			// Send PUT request to the new node's replica DB
+			sendPutRequest(ipAddress, shortURL, longURL, hash, "R");  // 'R' for replica
+		}
+	
+		// Clear the current node's replica DB after transferring data
+		database.clearReplicaData();
+	}
+	
+	
+	private static void moveDataToNewNode(int hash, String ipAddress) {
+		System.out.println("Transferring data based on hash to the newly added node at IP: " + ipAddress);
+	
+		// Fetch data from the main DB with hash <= specified hash
+		List<String[]> mainData = database.fetchDataByHash(hash);
+	
+		for (String[] row : mainData) {
+			String shortURL = row[0];
+			String longURL = row[1];
+			String rowHash = row[2];
+	
+			// Send PUT requests to the new node's main and replica databases
+			sendPutRequest(ipAddress, shortURL, longURL, rowHash, "M");  // 'M' for main
+			sendPutRequest(ipAddress, shortURL, longURL, rowHash, "R");  // 'R' for replica
+		}
+	
+		// Delete transferred rows from the original node's main DB
+		database.deleteRowsByHash(hash);
+	}
+
+	private static void sendPutRequest(String ipAddress, String shortURL, String longURL, String hash, String dbTarget) {
+		try {
+			Socket newNodeSocket = new Socket(ipAddress, 8082);  // Assumes new node listens on port 8082
+			PrintWriter out = new PrintWriter(newNodeSocket.getOutputStream());
+	
+			out.println("PUT /?short=" + shortURL + "&long=" + longURL + "&hash=" + hash + "&db=" + dbTarget + " HTTP/1.1");
+			out.println("Host: " + ipAddress);
+			out.println();  // End of headers
+			out.flush();
+	
+			newNodeSocket.close();
+		} catch (IOException e) {
+			System.err.println("Error sending PUT request to new node: " + e.getMessage());
+		}
+	}
+	
 	
 
 	private static void cleanUpLogs() {

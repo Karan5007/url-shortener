@@ -6,6 +6,8 @@ import java.sql.Statement;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.sql.PreparedStatement;
+import java.util.ArrayList;
+import java.util.List;
 
 public class URLShortnerDB {
 	
@@ -159,6 +161,109 @@ public class URLShortnerDB {
             return false;
         }
     }
+
+    // Fetch all data from the replica DB
+    public List<String[]> fetchReplicaData() {
+        List<String[]> data = new ArrayList<>();
+        try {
+            String sql = "SELECT shorturl, longurl, hash FROM bitly";  
+            Statement stmt = replicaConn.createStatement();  
+            ResultSet rs = stmt.executeQuery(sql);  
+            while (rs.next()) {
+                String[] entry = {rs.getString("shorturl"), rs.getString("longurl"), rs.getString("hash")};
+                data.add(entry);
+            }
+            rs.close();
+            stmt.close();
+        } catch (SQLException e) {
+            System.out.println("Error fetching data from replica DB: " + e.getMessage());
+        }
+        return data;
+    }
+
+    // Clear the replica DB after transferring data
+    public void clearReplicaData() {
+        try {
+            String sql = "DELETE FROM bitly";  // Same schema table, so clear it entirely
+            Statement stmt = replicaConn.createStatement();  // Use replicaConn for replica DB operations
+            stmt.executeUpdate(sql);
+        } catch (SQLException e) {
+            System.out.println("Error clearing replica data: " + e.getMessage());
+        }
+    }
+
+
+    private static void moveReplicaDataToNewNode(String ipAddress) {
+        System.out.println("Moving replica data to new node at IP: " + ipAddress);
+    
+        // Fetch data from the replica DB
+        List<String[]> replicaData = database.fetchReplicaData();
+    
+        for (String[] row : replicaData) {
+            String shortURL = row[0];
+            String longURL = row[1];
+            String hash = row[2];
+    
+            // Send PUT request to the new node's replica DB
+            sendPutRequest(ipAddress, shortURL, longURL, hash, "R");  // 'R' for replica
+        }
+    
+        // Clear the replica DB after transferring data
+        database.clearReplicaData();
+    }
+    
+    private static void moveDataToNewNode(int hash, String ipAddress) {
+        System.out.println("Moving data to new node at IP: " + ipAddress);
+    
+        // Fetch data from the main DB with hash <= specified hash
+        List<String[]> mainData = database.fetchDataByHash(hash);
+    
+        for (String[] row : mainData) {
+            String shortURL = row[0];
+            String longURL = row[1];
+            String rowHash = row[2];
+    
+            // Send PUT requests to the new node's main and replica DBs
+            sendPutRequest(ipAddress, shortURL, longURL, rowHash, "M");  // 'M' for main
+            sendPutRequest(ipAddress, shortURL, longURL, rowHash, "R");  // 'R' for replica
+        }
+    
+        // Delete transferred rows from the current node's main DB
+        database.deleteRowsByHash(hash);
+    }
+    
+
+    // Fetch all data from the main DB where hash <= maxHash
+    public List<String[]> fetchDataByHash(int maxHash) {
+        List<String[]> data = new ArrayList<>();
+        try {
+            String sql = "SELECT shorturl, longurl, hash FROM bitly WHERE hash <= ?";
+            PreparedStatement ps = mainConn.prepareStatement(sql);  // Use mainConn for main DB
+            ps.setInt(1, maxHash);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                String[] entry = {rs.getString("shorturl"), rs.getString("longurl"), rs.getString("hash")};
+                data.add(entry);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error fetching main data by hash: " + e.getMessage());
+        }
+        return data;
+    }
+
+    public void deleteRowsByHash(int maxHash) {
+        try {
+            String sql = "DELETE FROM bitly WHERE hash <= ?";
+            PreparedStatement ps = mainConn.prepareStatement(sql);
+            ps.setInt(1, maxHash);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Error deleting rows from main DB: " + e.getMessage());
+        }
+    }
+    
+
+    
 
 	public void closeConnections() {
         try {
