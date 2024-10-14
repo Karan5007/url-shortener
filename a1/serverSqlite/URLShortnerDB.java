@@ -3,6 +3,8 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.sql.PreparedStatement;
 
 public class URLShortnerDB {
@@ -10,7 +12,37 @@ public class URLShortnerDB {
 	private Connection mainConn=null;
 	private Connection replicaConn=null;
 
-	private static Connection connect(String url) {
+    // Cache for Main DB
+    private Map<String, String> mainCache;
+    
+    // Cache for Replica DB
+    private Map<String, String> replicaCache;
+    
+    private static final int CACHE_SIZE = 100; 
+
+
+	public URLShortnerDB(){ 
+		this("jdbc:sqlite:/virtual/409a1db/database.db", "jdbc:sqlite:/virtual/409a1db/replica_database.db");
+	}
+	
+	public URLShortnerDB(String mainUrl, String replicaUrl){ 
+		mainConn = URLShortnerDB.connect(mainUrl);
+        replicaConn = URLShortnerDB.connect(replicaUrl);
+
+        mainCache = new LinkedHashMap<>(CACHE_SIZE, 0.75f, true) {
+            protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+                return size() > CACHE_SIZE;
+            }
+        };
+        
+        replicaCache = new LinkedHashMap<>(CACHE_SIZE, 0.75f, true) {
+            protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+                return size() > CACHE_SIZE;  
+            }
+        };
+	}
+
+    private static Connection connect(String url) {
 		Connection conn = null;
 		try {
 			conn = DriverManager.getConnection(url);
@@ -31,22 +63,31 @@ public class URLShortnerDB {
 		}
 		return conn;
 	}
-
-	public URLShortnerDB(){ 
-		this("jdbc:sqlite:/virtual/409a1db/database.db", "jdbc:sqlite:/virtual/409a1db/replica_database.db");
-	}
-	
-	public URLShortnerDB(String mainUrl, String replicaUrl){ 
-		mainConn = URLShortnerDB.connect(mainUrl);
-		replicaConn = URLShortnerDB.connect(replicaUrl);
-	}
 	
 	public String findInMain(String shortURL) {
-        return find(shortURL, mainConn);
+        if (mainCache.containsKey(shortURL)) {
+            return mainCache.get(shortURL);
+        }
+
+        String longURL = find(shortURL, mainConn);
+
+        if (longURL != null) {
+            mainCache.put(shortURL, longURL);
+        }
+        return longURL;
     }
 
     public String findInReplica(String shortURL) {
-        return find(shortURL, replicaConn);
+        if (replicaCache.containsKey(shortURL)) {
+            return replicaCache.get(shortURL);
+        }
+
+        String longURL = find(shortURL, replicaConn);
+
+        if (longURL != null) {
+            replicaCache.put(shortURL, longURL);
+        }
+        return longURL;
     }
 
 	private String find(String shortURL, Connection conn) {
@@ -66,21 +107,31 @@ public class URLShortnerDB {
         }
     }
 
-	public boolean saveToMain(String shortURL, String longURL) {
-		return save(shortURL, longURL, mainConn);
+	public boolean saveToMain(String shortURL, String longURL, String hash) {
+		boolean result = save(shortURL, longURL, hash, mainConn);
+        if (result) {
+            mainCache.put(shortURL, longURL);
+        }
+        return result;
 	}
 	
-	public boolean saveToReplica(String shortURL, String longURL) {
-		return save(shortURL, longURL, replicaConn);
+	public boolean saveToReplica(String shortURL, String longURL, String hash) {
+		boolean result = save(shortURL, longURL, hash, replicaConn);
+        if (result) {
+            replicaCache.put(shortURL, longURL);
+        }
+        return result;
 	}
 
-	private boolean save(String shortURL, String longURL, Connection conn) {
+	private boolean save(String shortURL, String longURL, String hash, Connection conn) {
         try {
-            String insertSQL = "INSERT INTO bitly(shorturl,longurl) VALUES(?,?) ON CONFLICT(shorturl) DO UPDATE SET longurl=?;";
+            String insertSQL = "INSERT INTO bitly(shorturl,longurl,hash) VALUES(?,?,?) ON CONFLICT(shorturl) DO UPDATE SET longurl=?, hash=?;";
             PreparedStatement ps = conn.prepareStatement(insertSQL);
             ps.setString(1, shortURL);
             ps.setString(2, longURL);
-            ps.setString(3, longURL);
+            ps.setString(3, hash);  // Save the hash
+            ps.setString(4, longURL);
+            ps.setString(5, hash);  // Update hash on conflict
             ps.execute();
             return true;
         } catch (SQLException e) {
