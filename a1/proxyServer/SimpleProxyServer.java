@@ -130,7 +130,12 @@ public class SimpleProxyServer {
 					}else if(parsedRequest.method == "remove"){ // TODO: account for data.
 						ch.removeNode(parsedRequest.shortResource); // TODO: need to account for data moving
 						return;
- 					}
+ 					} else if(parsedRequest.method == "addWithExistingData"){
+						System.out.println("added node:  " + parsedRequest.shortResource);
+						List surrounding = ch.addNodeWithExistingData(parsedRequest.shortResource);
+						System.out.println(ch.getAssignedNodes());
+						return;
+					}
 
 
 					// TODO: use parseRequest.shortResponse to hash and figure out server host
