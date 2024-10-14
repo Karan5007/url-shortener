@@ -17,21 +17,6 @@ public class SimpleProxyServer {
 			System.out.println("Starting proxy for hosting  on port remote port: " + remoteport
 					+ "and local port " + localport);
 
-			
-
-			// List<String> nodes = Arrays.asList("192.168.0.1", "192.168.0.2", "192.168.0.3");
-			// ConsistentHashing ch = new ConsistentHashing();
-			// ch.addNode("192.168.0.1");
-			// ch.addNode("192.168.0.2");
-			// ch.addNode("192.168.0.3");
-			// String key = "my-data";
-			// List<String> nodesForKey = ch.getNodes(key);
-
-			// System.out.println("Replicated nodes for key " + key + ": " + nodesForKey);
-
-			// System.out.println("Assigned nodes" + ch.getAssignedNodes());
-
-
 			// And start running the server
 			runServer(remoteport, localport); // never returns
 		} catch (Exception e) {
@@ -125,7 +110,6 @@ public class SimpleProxyServer {
 					if(parsedRequest.method == "add"){
 						System.out.println("added node:  " + parsedRequest.shortResource);
 						ch.addNode(parsedRequest.shortResource);
-						System.out.println(ch.getAssignedNodes());
 						return;
 					}else if(parsedRequest.method == "remove"){ // TODO: account for data.
 						ch.removeNode(parsedRequest.shortResource); // TODO: need to account for data moving
