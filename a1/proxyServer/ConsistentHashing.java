@@ -50,7 +50,7 @@ public class ConsistentHashing {
         return result;
     }
 
-    public int getIpAddress(int hash){
+    public String getIpAddress(int hash){
         return circle.get(hash);
     }
 
@@ -98,8 +98,35 @@ public class ConsistentHashing {
 
 
     public void removeNode(String nodeIp) {
-        circle.remove(newPosition);
+        int hash = ipToHash.get(nodeIp);
+        circle.remove(hash);
         ipToHash.remove(nodeIp);
+    }
+
+    public int getNode(String url) {
+        int hashValue = hash(url);
+        Map.Entry<Integer, String> entry = circle.ceilingEntry(hashValue);
+        
+        // If no node has a hash greater than or equal to the URL hash, wrap around to the first node
+        if (entry == null) {
+            entry = circle.firstEntry();
+        }
+        
+        return entry.getKey();  
+    }
+
+    public int getReplicationNode(int nodeHash) {
+        if(circle.size()<=1){
+            return -1;
+        }
+        Map.Entry<Integer, String> entry = circle.higherEntry(nodeHash);
+        
+        // If there is no higher node, wrap around to the first node
+        if (entry == null) {
+            entry = circle.firstEntry();
+        }
+        
+        return entry.getKey();  
     }
 
     public void printCircle() {
