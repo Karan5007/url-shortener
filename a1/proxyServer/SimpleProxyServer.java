@@ -166,19 +166,14 @@ public class SimpleProxyServer {
 					// TODO: use parseRequest.shortResponse to hash and figure out server host
 					String url = parsedRequest.shortResource;
 
-					//NOTE: commented this out because infinite loop.
-					List<String> assignedNodes = ch.getNodes(url);
-					this.host = assignedNodes.get(0);
-					this.replicationHost = assignedNodes.get(1); // How to account if there is only 1 node??
-					// this.host = "142.1.46.25";
+					int mainNode = ch.getNode(url);
+					this.host = ch.getIpAddress(mainNode);
+					int replicationNode = ch.getReplicationNode(mainNode);
+					if (replicationNode!=-1){
+						this.replicationHost = ch.getIpAddress(replicationNode); 
+					}
 					System.out.println("Forwarding request to URL shortener at " + this.host + ":" + this.remoteport);
 					
-					// this.host = "127.0.0.1"; // set host to the orginal host for now
-					
-					// Add replication stuff
-					// Make a connection to the real server.
-					// If we cannot connect to the server, send an error to the
-					// client, disconnect, and continue waiting for connections.
 					try {
 						server = new Socket(this.host, this.remoteport);
 					} catch (IOException e) {
@@ -294,14 +289,14 @@ public class SimpleProxyServer {
 
 	private static void sendAddNodeRequest(int hash, String ipAddress, OutputStream streamToServer) throws IOException {
         PrintWriter outToServer = new PrintWriter(streamToServer);
-        outToServer.println("PUT /?method=" + addedNode + "&hash=" + hash + "&ipAddress=" + ipAddress);
+        outToServer.println("PUT /?method=addedNode" + "&hash=" + hash + "&ipAddress=" + ipAddress);
         outToServer.println(); 
         outToServer.flush();
     }
 
 	private static void sendRemoveNodeRequest(String ipAddress, OutputStream streamToServer) throws IOException {
         PrintWriter outToServer = new PrintWriter(streamToServer);
-        outToServer.println("PUT /?method=" + removedNode + "&nextIpAddr=" + ipAddress + ipAddress);
+        outToServer.println("PUT /?method=removedNode" + "&nextIpAddr=" + ipAddress + ipAddress);
         outToServer.println(); 
         outToServer.flush();
     }
