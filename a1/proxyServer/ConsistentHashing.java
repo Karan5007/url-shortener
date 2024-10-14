@@ -45,15 +45,18 @@ public class ConsistentHashing {
 
         int hash = hash(nodeIp);
         SortedMap<Integer, String> tailMap = circle.tailMap(hash);
-        SortedMap<Integer, String> headMap = circle.headMap(hash);
         
         // Find the next node (successive node) and previous node
         int nextHash = tailMap.isEmpty() ? circle.firstKey() : tailMap.firstKey();
         int prevHash = headMap.isEmpty() ? circle.lastKey() : headMap.lastKey();
         circle.put(hash, nodeIp);
 
-        return Arrays.asList(prevHash, nextHash);
+        return nextHash;
 
+    }
+
+    public int getIpAddress(int hash){
+        return circle.get(hash);
     }
 
     

@@ -132,8 +132,10 @@ public class SimpleProxyServer {
 						return;
  					} else if(parsedRequest.method == "addWithExistingData"){
 						System.out.println("added node:  " + parsedRequest.shortResource);
-						List surrounding = ch.addNodeWithExistingData(parsedRequest.shortResource);
+						int hash = ch.addNodeWithExistingData(parsedRequest.shortResource);
+						String ipAddress = ch.getIpAddress(hash);
 						System.out.println(ch.getAssignedNodes());
+						sendAddNodeRequest(hash, ipAddress);
 						return;
 					}
 
@@ -215,11 +217,15 @@ public class SimpleProxyServer {
 	private static ParsedRequest parseRequest(String inputLine) {
     	//copying what we had form the node code.
 		Pattern padd = Pattern.compile("^PUT\\s+/\\?ipAddr=(\\S+)$");
+		Pattern paddExisting = Pattern.compile("^PUT\\s+/\\?ipAddr=(\\S+)$");
+
 
         Pattern pput = Pattern.compile("^PUT\\s+/\\?short=(\\S+)&long=(\\S+)\\s+(\\S+)$");
         Pattern pget = Pattern.compile("^(GET)\\s+/(\\S+)\\s+(HTTP/\\S+)$");
 
 		Matcher madd = padd.matcher(inputLine);
+		Matcher maddExisting = padd.matcher(inputLine);
+
 
         Matcher mput = pput.matcher(inputLine);
         Matcher mget = pget.matcher(inputLine);
@@ -237,6 +243,10 @@ public class SimpleProxyServer {
 			String shortResource = madd.group(1);
 
             return new ParsedRequest("add", shortResource, null, null);
+		}else if(maddExisting.matches()) {
+			String shortResource = madd.group(1);
+
+            return new ParsedRequest("addWithExistingData", shortResource, null, null);
 		}
 
         return null; // Unknown request type, edit this later to add new servers/delete old servers.
@@ -248,6 +258,13 @@ public class SimpleProxyServer {
         outToServer.println("PUT /?short=" + parsedRequest.shortResource + "&long=" + parsedRequest.longResource + " " + parsedRequest.httpVersion);
         outToServer.println("Host: " + parsedRequest.shortResource);
         outToServer.println(); // End of headers
+        outToServer.flush();
+    }
+
+	private static void sendAddNodeRequest(int hash, String ipAddress, OutputStream streamToServer) throws IOException {
+        PrintWriter outToServer = new PrintWriter(streamToServer);
+        outToServer.println("PUT /?method=" + addedNode + "&hash=" + hash + "&ipAddress=" + ipAddress);
+        outToServer.println(); 
         outToServer.flush();
     }
 
