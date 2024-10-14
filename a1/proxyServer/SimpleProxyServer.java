@@ -134,8 +134,47 @@ public class SimpleProxyServer {
 						System.out.println("added node:  " + parsedRequest.shortResource);
 						int hash = ch.addNodeWithExistingData(parsedRequest.shortResource);
 						String ipAddress = ch.getIpAddress(hash);
-						System.out.println(ch.getAssignedNodes());
-						sendAddNodeRequest(hash, ipAddress);
+						try {
+							server = new Socket(ipAddress, this.remoteport);
+						} catch (IOException e) {
+							PrintWriter out = new PrintWriter(streamToClient);
+							out.print("HTTP/1.1 502 Bad Gateway\r\n");
+							out.print("Content-Type: text/plain\r\n");
+							out.print("\r\n");
+							out.print("Proxy server cannot connect to " + this.host + ":"
+									+ this.remoteport + ":\n" + e + "\n");
+							out.flush();
+							client.close();
+							return; 
+						}
+						final InputStream streamFromServer = server.getInputStream();
+						final OutputStream streamToServer = server.getOutputStream();
+						sendAddNodeRequest(hash, parsedRequest.shortResource, streamToServer);
+
+						return;
+					}else if(parsedRequest.method == "removeWithExistingData"){
+						System.out.println("removed node:  " + parsedRequest.shortResource);
+						List<Integer> hashes = ch.removeNodeWithExistingData(parsedRequest.shortResource);
+						String ipAddress = ch.getIpAddress(hashes.get(0));
+						String nextIPAddress = ch.getIpAddress(hashes.get(1));
+
+						try {
+							server = new Socket(ipAddress, this.remoteport);
+						} catch (IOException e) {
+							PrintWriter out = new PrintWriter(streamToClient);
+							out.print("HTTP/1.1 502 Bad Gateway\r\n");
+							out.print("Content-Type: text/plain\r\n");
+							out.print("\r\n");
+							out.print("Proxy server cannot connect to " + this.host + ":"
+									+ this.remoteport + ":\n" + e + "\n");
+							out.flush();
+							client.close();
+							return; 
+						}
+						final InputStream streamFromServer = server.getInputStream();
+						final OutputStream streamToServer = server.getOutputStream();
+						sendRemoveNodeRequest(nextIPAddress, streamToServer);
+
 						return;
 					}
 
@@ -218,13 +257,17 @@ public class SimpleProxyServer {
     	//copying what we had form the node code.
 		Pattern padd = Pattern.compile("^PUT\\s+/\\?ipAddr=(\\S+)$");
 		Pattern paddExisting = Pattern.compile("^PUT\\s+/\\?ipAddr=(\\S+)$");
+		Pattern premoveExisting = Pattern.compile("^PUT\\s+/\\?ipAddr=(\\S+)$");
+
 
 
         Pattern pput = Pattern.compile("^PUT\\s+/\\?short=(\\S+)&long=(\\S+)\\s+(\\S+)$");
         Pattern pget = Pattern.compile("^(GET)\\s+/(\\S+)\\s+(HTTP/\\S+)$");
 
 		Matcher madd = padd.matcher(inputLine);
-		Matcher maddExisting = padd.matcher(inputLine);
+		Matcher maddExisting = paddExisting.matcher(inputLine);
+		Matcher mremoveExisting = premoveExisting.matcher(inputLine);
+
 
 
         Matcher mput = pput.matcher(inputLine);
@@ -247,6 +290,10 @@ public class SimpleProxyServer {
 			String shortResource = madd.group(1);
 
             return new ParsedRequest("addWithExistingData", shortResource, null, null);
+		}else if(mremoveExisting.matches()) {
+			String shortResource = madd.group(1);
+
+            return new ParsedRequest("removeWithExistingData", shortResource, null, null);
 		}
 
         return null; // Unknown request type, edit this later to add new servers/delete old servers.
@@ -264,6 +311,13 @@ public class SimpleProxyServer {
 	private static void sendAddNodeRequest(int hash, String ipAddress, OutputStream streamToServer) throws IOException {
         PrintWriter outToServer = new PrintWriter(streamToServer);
         outToServer.println("PUT /?method=" + addedNode + "&hash=" + hash + "&ipAddress=" + ipAddress);
+        outToServer.println(); 
+        outToServer.flush();
+    }
+
+	private static void sendRemoveNodeRequest(String ipAddress, OutputStream streamToServer) throws IOException {
+        PrintWriter outToServer = new PrintWriter(streamToServer);
+        outToServer.println("PUT /?method=" + removedNode + "&nextIpAddr=" + ipAddress + ipAddress);
         outToServer.println(); 
         outToServer.flush();
     }

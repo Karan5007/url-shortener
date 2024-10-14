@@ -35,24 +35,30 @@ public class ConsistentHashing {
         circle.putIfAbsent(hash, nodeIp);
     }
 
-    public <List> addNodeWithExistingData(String nodeIp) {
-        //nodeCircleMap.putIfAbsent(nodeIp, new HashSet<>());
-        // for (int i = 0; i < numVirtualNodes; i++) {
-        //     int hash = hash(nodeIp + i);
-        //     circle.put(hash, nodeIp);
-        //     nodeCircleMap.get(nodeIp).add(hash);
-        // }
-
+    public int addNodeWithExistingData(String nodeIp) {
         int hash = hash(nodeIp);
         SortedMap<Integer, String> tailMap = circle.tailMap(hash);
         
-        // Find the next node (successive node) and previous node
         int nextHash = tailMap.isEmpty() ? circle.firstKey() : tailMap.firstKey();
-        int prevHash = headMap.isEmpty() ? circle.lastKey() : headMap.lastKey();
         circle.put(hash, nodeIp);
 
         return nextHash;
 
+    }
+
+    public List<Integer> removeNodeWithExistingData(String nodeIp) {
+        int hash = hash(nodeIp);
+        SortedMap<Integer, String> tailMap = circle.tailMap(hash);
+        SortedMap<Integer, String> headMap = circle.headMap(hash);
+
+        // Find the next node (successive node) and previous node
+        int nextHash = tailMap.isEmpty() ? circle.firstKey() : tailMap.firstKey();
+        int prevHash = headMap.isEmpty() ? circle.lastKey() : headMap.lastKey();
+        circle.remove(hash);
+        ArrayList<Integer> result = new ArrayList<>();
+        result.add(prevHash);
+        result.add(nextHash);
+        return result;
     }
 
     public int getIpAddress(int hash){
