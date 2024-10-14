@@ -299,9 +299,9 @@ public class SimpleProxyServer {
     }
 
     // Handle PUT request
-    private static void handlePutRequest(ParsedRequest parsedRequest, OutputStream streamToServer, int hash, String DB) throws IOException {
+    private static void handlePutRequest(ParsedRequest parsedRequest, OutputStream streamToServer, int hash, char DB) throws IOException {
         PrintWriter outToServer = new PrintWriter(streamToServer);
-        outToServer.println("PUT /?short=" + parsedRequest.shortResource + "&long=" + parsedRequest.longResource + " " + parsedRequest.httpVersion);
+        outToServer.println("PUT /?short=" + parsedRequest.shortResource + "&long=" + parsedRequest.longResource + "&hash=" + hash + "&db=" + DB + " " + parsedRequest.httpVersion);
         outToServer.println("Host: " + parsedRequest.shortResource);
         outToServer.println(); // End of headers
         outToServer.flush();
