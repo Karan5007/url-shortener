@@ -104,6 +104,15 @@ public class URLShortner {
 			System.out.println("Sent awake signal to proxy server at " + host + ":" + port);
 		} catch (IOException e) {
 			System.out.println("Unable to connect to proxy server at " + host + ":" + port + ". Will retry...");
+		} finally {
+			// Ensure resources are closed in case of an exception
+			if (server != null) {
+				try {
+					server.close();
+				} catch (IOException e) {
+					System.err.println("Error closing proxy connection socket: " + e.getMessage());
+				}
+			}
 		}
 	}
 	
@@ -134,21 +143,22 @@ public class URLShortner {
 
 			
 
-			Pattern pput = Pattern.compile("^PUT\\s+/\\?short=(\\S+)&long=(\\S+)(?:&db=(M|R))?\\s+(\\S+)$");
-        	Matcher mput = pput.matcher(input);
+			Pattern pput = Pattern.compile("^PUT\\s+/\\?short=(\\S+)&long=(\\S+)&hash=(\\d+)(?:&db=(M|R))?\\s+(\\S+)$");
+			Matcher mput = pput.matcher(input);
 			if(mput.matches()){
-				String shortResource=mput.group(1);
-				String longResource=mput.group(2);
-				String dbTarget = mput.group(3);  // db=M or db=R
-				String httpVersion=mput.group(4);
+				String shortResource = mput.group(1);
+    			String longResource = mput.group(2);
+    			String hash = mput.group(3);  // Capture the hash from the request
+    			String dbTarget = mput.group(4);  // db=M or db=R
+    			String httpVersion = mput.group(5);
 
 				if (dbTarget == null || "M".equalsIgnoreCase(dbTarget)) {
 					synchronized (database) {
-						database.saveToMain(shortResource, longResource);  // Save to main DB
+						database.saveToMain(shortResource, longResource, hash);  // Save to main DB with hash
 					}
 				} else if ("R".equalsIgnoreCase(dbTarget)) {
 					synchronized (database) {
-						database.saveToReplica(shortResource, longResource);  // Save to replica DB
+						database.saveToReplica(shortResource, longResource, hash);  // Save to replica DB with hash
 					}
 				}
 

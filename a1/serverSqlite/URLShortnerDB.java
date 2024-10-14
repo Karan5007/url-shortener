@@ -107,6 +107,26 @@ public class URLShortnerDB {
         }
     }
 
+    public Map<String, String> findUrlsInHashRange(String hashStart, String hashEnd, boolean useMainDb) {
+        Connection conn = useMainDb ? mainConn : replicaConn;
+        Map<String, String> results = new LinkedHashMap<>();
+    
+        try {
+            String sql = "SELECT shorturl, longurl FROM bitly WHERE hash >= ? AND hash <= ?;";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, hashStart);
+            ps.setString(2, hashEnd);
+            ResultSet rs = ps.executeQuery();
+    
+            while (rs.next()) {
+                results.put(rs.getString("shorturl"), rs.getString("longurl"));
+            }
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+        return results;
+    }
+
 	public boolean saveToMain(String shortURL, String longURL, String hash) {
 		boolean result = save(shortURL, longURL, hash, mainConn);
         if (result) {
