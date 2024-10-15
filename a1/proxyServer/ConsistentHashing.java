@@ -27,9 +27,9 @@ public class ConsistentHashing implements Serializable{
 
 
     public int addNodeWithExistingData(String nodeIp) {
-        //addNode(nodeIp);
+        // addNode(nodeIp);
         int hash = ipToHash.get(nodeIp);
-        SortedMap<Integer, String> tailMap = circle.tailMap(hash);
+        SortedMap<Integer, String> tailMap = circle.tailMap(hash+1);
         
         int nextHash = tailMap.isEmpty() ? circle.firstKey() : tailMap.firstKey();
         return nextHash;
@@ -49,6 +49,12 @@ public class ConsistentHashing implements Serializable{
         result.add(nextHash);
         removeNode(nodeIp);
         return result;
+    }
+
+    public int getNextHash(int hash) {
+        SortedMap<Integer, String> tailMap = circle.tailMap(hash+1);
+        int nextHash = tailMap.isEmpty() ? circle.firstKey() : tailMap.firstKey();
+        return nextHash;
     }
 
     public String getIpAddress(int hash){

@@ -147,6 +147,17 @@ public class SimpleProxyServer {
 						final OutputStream streamToServer = server.getOutputStream();
 						sendAddNodeRequest(hash, parsedRequest.shortResource, streamToServer);
 
+						BufferedReader inFromServer = new BufferedReader(new InputStreamReader(streamFromServer));
+
+						String responseLine;
+						while ((responseLine = inFromServer.readLine()) != null) {
+							System.out.println("Response from server: " + responseLine);
+							// Break if you've read all the headers (the server will send an empty line to indicate the end of headers)
+							if (responseLine.isEmpty()) {
+								break;
+							}
+						}
+
 						return;
 					}else if(parsedRequest.method == "removeWithExistingData"){
 						System.out.println("removed node:  " + parsedRequest.shortResource);
@@ -154,6 +165,7 @@ public class SimpleProxyServer {
 						saveObject(ch, "savedConsistentHashing");
 						String ipAddress = ch.getIpAddress(hashes.get(0));
 						String nextIPAddress = ch.getIpAddress(hashes.get(1));
+
 						System.out.println("first next ip addr = " + hashes);
 
 						try {
@@ -171,20 +183,20 @@ public class SimpleProxyServer {
 						}
 						final InputStream streamFromServer = server.getInputStream();
 						final OutputStream streamToServer = server.getOutputStream();
-						sendRemovePrevNodeRequest(streamToServer);
+						int nextHash = ch.getNextHash(hashes.get(1));
+						String ipAddrSend = ch.getIpAddress(nextHash);
+						sendRemovePrevNodeRequest(streamToServer, ipAddrSend);
 
 						BufferedReader inFromServer = new BufferedReader(new InputStreamReader(streamFromServer));
 
 						String responseLine;
 						while ((responseLine = inFromServer.readLine()) != null) {
-							//System.out.println("Response from server: " + responseLine);
+							System.out.println("Response from server: " + responseLine);
 							// Break if you've read all the headers (the server will send an empty line to indicate the end of headers)
 							if (responseLine.isEmpty()) {
 								break;
 							}
 						}
-
-
 
 						try {
 							server = new Socket(ipAddress, this.remoteport);
@@ -214,6 +226,7 @@ public class SimpleProxyServer {
 								break;
 							}
 						}
+
 
 						return;
 					}
@@ -315,7 +328,7 @@ public class SimpleProxyServer {
 		// Pattern premoveExisting = Pattern.compile("^PUT\\s+/\\?method=failedNode&ipAddr=(\\S+)$");
 		Pattern premoveExisting = Pattern.compile("^PUT\\s+/\\?method=failedNode&ipAddr=(\\S+)\\s+(\\S+)$");
 
-		Pattern paddExisting = Pattern.compile("^PUT\\s+/\\?method=addedNode&ipAddr=(\\S+)$");
+		Pattern paddExisting = Pattern.compile("^PUT\\s+/\\?method=addedNode&ipAddr=(\\S+)\\s+(\\S+)$");
 		Pattern padd = Pattern.compile("^PUT\\s+/\\?method=simpleAddNode&ipAddr=(\\S+)$");
 
 
@@ -382,9 +395,10 @@ public class SimpleProxyServer {
         outToServer.flush();
     }
 
-	private static void sendRemovePrevNodeRequest(OutputStream streamToServer) throws IOException {
+	private static void sendRemovePrevNodeRequest(OutputStream streamToServer, String ipAddress) throws IOException {
+		System.out.println("PUT /?method=removedPrevNode"  + "&nextIpAddr=" + ipAddress + " HTTP/1.1");
         PrintWriter outToServer = new PrintWriter(streamToServer);
-        outToServer.println("PUT /?method=removedPrevNode HTTP/1.1");
+        outToServer.println("PUT /?method=removedPrevNode"  + "&nextIpAddr=" + ipAddress + " HTTP/1.1");
         outToServer.println(); 
         outToServer.flush();
     }

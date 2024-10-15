@@ -152,9 +152,9 @@ public class URLShortner {
 				String httpVersion = mAddNode.group(3);
 	
 				// Handle adding a new node
-				handleAddNode(hash, ipAddress);
+				String output = handleAddNode(hash, ipAddress);
 	
-				sendResponse(out, dataOut, "HTTP/1.1 200 OK", REDIRECT_RECORDED);
+				sendResponse(out, dataOut, output+"HTTP/1.1 200 OK", REDIRECT_RECORDED);
 				return;
 			}
 	
@@ -184,14 +184,24 @@ public class URLShortner {
 			}
 
 			// Handle node removal as previous Node
-			Pattern pRemovePrevNode = Pattern.compile("^PUT\\s+/\\?method=removedPrevNode\\s+(\\S+)$");
+			Pattern pRemovePrevNode = Pattern.compile("^PUT\\s+/\\?method=removedPrevNode&nextIpAddr=(\\S+)\\s+(\\S+)$");
 			Matcher mRemovePrevNode = pRemovePrevNode.matcher(input);
 			if (mRemovePrevNode.matches()) {
-				String httpVersion = mRemovePrevNode.group(1);
+				String nextIpAddr = mRemovePrevNode.group(1);
+				String httpVersion = mRemovePrevNode.group(2);
 	
-				handleRemovePrevNode();
+				handleRemovePrevNode(nextIpAddr);
+
+				out.println("HTTP/1.1 200 OK");
+				
+				out.println(nextIpAddr + "Server:sddd : 1.0");
+				out.println("Date: " + new Date());
+				out.println("Content-type: text/html");
+				out.println("Content-length: 51");
+				out.println();
+				out.flush();
 	
-				sendResponse(out, dataOut, "HTTP/1.1 200 OK", REDIRECT_RECORDED);
+				//sendResponse(out, dataOut, nextIpAddr + "HTTP/1.1 200 OK", REDIRECT_RECORDED);
 				return;
 			}
 	
@@ -296,9 +306,10 @@ public class URLShortner {
 		dataOut.flush();
 	}
 	
-	private static void handleAddNode(int hash, String ipAddress) {
-		moveReplicaDataToNewNode(ipAddress);
-		moveDataToNewNode(hash, ipAddress);
+	private static String handleAddNode(int hash, String ipAddress) {
+		String output = moveReplicaDataToNewNode(ipAddress);
+		String output2 = moveDataToNewNode(hash, ipAddress);
+		return output;
 	}
 	
 	private static String handleRemoveNode(String nextIpAddr) {
@@ -308,43 +319,44 @@ public class URLShortner {
 		return nextIpAddr;
 	}
 
-	private static void handleRemovePrevNode() {
-		moveReplicaDataToMainData();
+	private static void handleRemovePrevNode(String ipAddr) {
+		moveReplicaDataToMainData(ipAddr);
 
 		System.out.println("Handling node removal.");
 	}
 
-	private static void moveReplicaDataToNewNode(String ipAddress) {
+	private static String moveReplicaDataToNewNode(String ipAddress) {
 		System.out.println("Transferring replica data to the newly added node at IP: " + ipAddress);
 	
 		// Fetch data from the replica DB and move it to the new node
 		List<String[]> replicaData = database.fetchReplicaData();
-	
+		String result = "";
 		for (String[] row : replicaData) {
 			String shortURL = row[0];
 			String longURL = row[1];
 			String hash = row[2];
 	
 			// Send PUT request to the new node's replica DB
-			sendPutRequest(ipAddress, shortURL, longURL, hash, "R");  // 'R' for replica
+			result += sendPutRequest(ipAddress, shortURL, longURL, hash, "R");  // 'R' for replica
 		}
 	
 		// Clear the current node's replica DB after transferring data
 		database.clearReplicaData();
+		return result;
 	}
 	
 	
-	private static void moveDataToNewNode(int hash, String ipAddress) {
+	private static String moveDataToNewNode(int hash, String ipAddress) {
 		System.out.println("Transferring data based on hash to the newly added node at IP: " + ipAddress);
 	
 		// Fetch data from the main DB with hash <= specified hash
 		List<String[]> mainData = database.fetchDataByHash(hash);
-	
+		String output = "";
 		for (String[] row : mainData) {
 			String shortURL = row[0];
 			String longURL = row[1];
 			String rowHash = row[2];
-	
+			output += rowHash + " ";
 			// Send PUT requests to the new node's main and replica databases
 			sendPutRequest(ipAddress, shortURL, longURL, rowHash, "M");  // 'M' for main
 			database.saveToReplica(shortURL, longURL, rowHash);
@@ -353,6 +365,8 @@ public class URLShortner {
 	
 		// Delete transferred rows from the original node's main DB
 		database.deleteRowsByHash(hash);
+
+		return output;
 	}
 
 	private static String moveMainDataToNextNode(String ipAddress) {
@@ -373,7 +387,7 @@ public class URLShortner {
 		return result;
 	}
 
-	private static void moveReplicaDataToMainData() {
+	private static void moveReplicaDataToMainData(String ipAddress) {
 		System.out.println("Transferring Replica Data to Main Data: ");
 	
 		// Fetch data from the replica DB and move it to the new node
@@ -386,6 +400,9 @@ public class URLShortner {
 	
 			// Send PUT request to the new node's replica DB
 			database.saveToMain(shortURL, longURL, hash);
+			String send = sendPutRequest(ipAddress, shortURL, longURL, hash, "R");  // 'R' for replica
+
+
 		}
 		database.clearReplicaData();
 	}
@@ -404,7 +421,7 @@ public class URLShortner {
 			return "done successfully!";
 		} catch (IOException e) {
 			System.err.println("Error sending PUT request to new node: " + e.getMessage());
-			return ipAddress;
+			return e.getMessage();
 		}
 	}
 	
