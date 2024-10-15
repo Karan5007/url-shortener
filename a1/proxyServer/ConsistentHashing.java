@@ -1,9 +1,10 @@
+import java.io.Serializable;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 
-public class ConsistentHashing {
+public class ConsistentHashing implements Serializable{
     int MAX_HASH;
     TreeMap<Integer, String> circle = new TreeMap<>();
     HashMap<String, Integer> ipToHash = new HashMap<>();  

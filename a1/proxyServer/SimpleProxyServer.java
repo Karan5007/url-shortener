@@ -18,6 +18,7 @@ public class SimpleProxyServer {
 					+ "and local port " + localport);
 
 			// And start running the server
+			loadObject("savedConsistentHashing");
 			runServer(remoteport, localport); // never returns
 		} catch (Exception e) {
 			System.err.println(e);
@@ -110,13 +111,16 @@ public class SimpleProxyServer {
 					if(parsedRequest.method == "add"){
 						System.out.println("added node:  " + parsedRequest.shortResource);
 						ch.addNode(parsedRequest.shortResource);
+						saveObject(ch, "savedConsistentHashing");
 						return;
 					}else if(parsedRequest.method == "remove"){ // TODO: account for data.
 						ch.removeNode(parsedRequest.shortResource); // TODO: need to account for data moving
+						saveObject(ch, "savedConsistentHashing");
 						return;
  					} else if(parsedRequest.method == "addWithExistingData"){
 						System.out.println("added node:  " + parsedRequest.shortResource);
 						int hash = ch.addNodeWithExistingData(parsedRequest.shortResource);
+						saveObject(ch, "savedConsistentHashing");
 						String ipAddress = ch.getIpAddress(hash);
 						try {
 							server = new Socket(ipAddress, this.remoteport);
@@ -139,6 +143,7 @@ public class SimpleProxyServer {
 					}else if(parsedRequest.method == "removeWithExistingData"){
 						System.out.println("removed node:  " + parsedRequest.shortResource);
 						List<Integer> hashes = ch.removeNodeWithExistingData(parsedRequest.shortResource);
+						saveObject(ch, "savedConsistentHashing");
 						String ipAddress = ch.getIpAddress(hashes.get(0));
 						String nextIPAddress = ch.getIpAddress(hashes.get(1));
 
@@ -254,10 +259,9 @@ public class SimpleProxyServer {
 
 	private static ParsedRequest parseRequest(String inputLine) {
     	//copying what we had form the node code.
-		Pattern padd = Pattern.compile("^PUT\\s+/\\?ipAddr=(\\S+)$");
-		Pattern paddExisting = Pattern.compile("^PUT\\s+/\\?ipAddr=(\\S+)$");
-		Pattern premoveExisting = Pattern.compile("^PUT\\s+/\\?ipAddr=(\\S+)$");
-
+		Pattern premoveExisting = Pattern.compile("^PUT\\s+/\\?method=failedNode&ipAddr=(\\S+)$");
+		Pattern paddExisting = Pattern.compile("^PUT\\s+/\\?method=addedNode&ipAddr=(\\S+)$");
+		Pattern padd = Pattern.compile("^PUT\\s+/\\?method=simpleAddNode&ipAddr=(\\S+)$");
 
 
         Pattern pput = Pattern.compile("^PUT\\s+/\\?short=(\\S+)&long=(\\S+)\\s+(\\S+)$");
@@ -329,6 +333,27 @@ public class SimpleProxyServer {
         outToServer.println(); // End of headers
         outToServer.flush();
     }
+
+	public static void saveObject(ConsistentHashing obj, String filename) {
+        try (FileOutputStream fileOut = new FileOutputStream(filename);
+             ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
+            out.writeObject(obj);
+            System.out.println("Object saved to file.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Method to load the object from disk (deserialization)
+    public static ConsistentHashing loadObject(String filename) {
+        try (FileInputStream fileIn = new FileInputStream(filename);
+             ObjectInputStream in = new ObjectInputStream(fileIn)) {
+            return (ConsistentHashing) in.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            return null;
+        }
+    }
+
 
     // Class to store parsed request information, alt for adding new servers
     static class ParsedRequest {
