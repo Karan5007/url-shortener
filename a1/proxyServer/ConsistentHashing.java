@@ -38,7 +38,7 @@ public class ConsistentHashing implements Serializable{
 
     public List<Integer> removeNodeWithExistingData(String nodeIp) {
         int hash = ipToHash.get(nodeIp);
-        SortedMap<Integer, String> tailMap = circle.tailMap(hash);
+        SortedMap<Integer, String> tailMap = circle.tailMap(hash+1);
         SortedMap<Integer, String> headMap = circle.headMap(hash);
 
         // Find the next node (successive node) and previous node

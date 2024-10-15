@@ -170,9 +170,9 @@ public class URLShortner {
 
 				out.println("HTTP/1.1 200 OK");
 				
-				out.println("Server:sfdsfdsfdsf : 1.0");
+				out.println(result + "Server:sfdsfdsfdsf : 1.0");
 				out.println("Date: " + new Date());
-				out.println("Content-type: " + contentMimeType);
+				out.println("Content-type: text/html");
 				out.println("Content-length: " + result.length());
 				out.println();
 				out.println(result);
@@ -305,7 +305,7 @@ public class URLShortner {
 		String result = moveMainDataToNextNode(nextIpAddr);
 		
 		System.out.println("Handling node removal. Next node IP: " + nextIpAddr);
-		return result;
+		return nextIpAddr;
 	}
 
 	private static void handleRemovePrevNode() {
@@ -360,7 +360,7 @@ public class URLShortner {
 	
 		// Fetch data from the replica DB and move it to the new node
 		List<String[]> mainData = database.fetchMainData();
-		String result = "";
+		String result = "something";
 		for (String[] row : mainData) {
 			String shortURL = row[0];
 			String longURL = row[1];
@@ -368,7 +368,7 @@ public class URLShortner {
 	
 			// Send PUT request to the new node's replica DB
 			String send = sendPutRequest(ipAddress, shortURL, longURL, hash, "R");  // 'R' for replica
-			result += send + "\n";
+			result += ipAddress;
 		}
 		return result;
 	}
@@ -404,7 +404,7 @@ public class URLShortner {
 			return "done successfully!";
 		} catch (IOException e) {
 			System.err.println("Error sending PUT request to new node: " + e.getMessage());
-			return e.getMessage();
+			return ipAddress;
 		}
 	}
 	

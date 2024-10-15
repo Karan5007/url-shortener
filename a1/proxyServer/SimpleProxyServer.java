@@ -154,6 +154,7 @@ public class SimpleProxyServer {
 						saveObject(ch, "savedConsistentHashing");
 						String ipAddress = ch.getIpAddress(hashes.get(0));
 						String nextIPAddress = ch.getIpAddress(hashes.get(1));
+						System.out.println("first next ip addr = " + hashes);
 
 						try {
 							server = new Socket(nextIPAddress, this.remoteport);
@@ -176,7 +177,7 @@ public class SimpleProxyServer {
 
 						String responseLine;
 						while ((responseLine = inFromServer.readLine()) != null) {
-							System.out.println("Response from server: " + responseLine);
+							//System.out.println("Response from server: " + responseLine);
 							// Break if you've read all the headers (the server will send an empty line to indicate the end of headers)
 							if (responseLine.isEmpty()) {
 								break;
@@ -200,6 +201,7 @@ public class SimpleProxyServer {
 						}
 						final InputStream streamFromServer2 = server.getInputStream();
 						final OutputStream streamToServer2 = server.getOutputStream();
+						System.out.println("next ip addr = " + nextIPAddress);
 						sendRemoveNodeRequest(nextIPAddress, streamToServer2);
 
 						BufferedReader inFromServer2 = new BufferedReader(new InputStreamReader(streamFromServer2));
