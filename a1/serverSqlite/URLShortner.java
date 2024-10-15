@@ -65,8 +65,8 @@ public class URLShortner {
 			System.out.println("Server started.\nListening for connections on port : " + PORT + " ...\n");
 			
 			
-			ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(1);
-        	scheduler.scheduleAtFixedRate(() -> connectToProxy(host, proxyPort, ipAddress), 0, 60, TimeUnit.SECONDS); // send awake signal every 60 seconds
+			// ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(1);
+        	// scheduler.scheduleAtFixedRate(() -> connectToProxy(host, proxyPort, ipAddress), 0, 60, TimeUnit.SECONDS); // send awake signal every 60 seconds
 
 
 
@@ -98,7 +98,7 @@ public class URLShortner {
 			streamToServer = server.getOutputStream();
 			PrintWriter outToServer = new PrintWriter(streamToServer);
 	
-			outToServer.println("PUT /?ipAddr=" + ipAddress);
+			outToServer.println("PUT /?method=simpleAddNode&ipAddr=" + ipAddress);
 			outToServer.println(); 
 			outToServer.flush();
 	
@@ -166,9 +166,20 @@ public class URLShortner {
 				String httpVersion = mRemoveNextNode.group(2);
 	
 				// Handle node removal logic
-				handleRemoveNode(nextIpAddr);
+				String result = handleRemoveNode(nextIpAddr);
+
+				out.println("HTTP/1.1 200 OK");
+				
+				out.println("Server:sfdsfdsfdsf : 1.0");
+				out.println("Date: " + new Date());
+				out.println("Content-type: " + contentMimeType);
+				out.println("Content-length: " + result.length());
+				out.println();
+				out.println(result);
+				out.flush();
 	
-				sendResponse(out, dataOut, "HTTP/1.1 200 OK", REDIRECT_RECORDED);
+	
+				//sendResponse(out, result, "HTTP/1.1 200 OK", REDIRECT_RECORDED);
 				return;
 			}
 
@@ -196,6 +207,8 @@ public class URLShortner {
 	
 				if (dbTarget == null || "M".equalsIgnoreCase(dbTarget)) {
 					synchronized (database) {
+						System.out.println("input:   " + input);
+
 						database.saveToMain(shortResource, longResource, hash);  // Save to main DB with hash
 					}
 				} else if ("R".equalsIgnoreCase(dbTarget)) {
@@ -240,7 +253,6 @@ public class URLShortner {
 			}
 			System.err.println("Server error: " + e.getMessage());
 
-		} finally {
 			try {
 				if (in != null) in.close();
 				if (out != null) out.close();
@@ -250,12 +262,13 @@ public class URLShortner {
 					logWriter.println("Connection closed on thread: " + Thread.currentThread().getName());
 					logWriter.close();
 				}
-			} catch (Exception e) {
-				System.err.println("Error closing streams or socket: " + e.getMessage());
+			} catch (Exception e2) {
+				System.err.println("Error closing streams or socket: " + e2.getMessage());
 			}
 			closeSocket();  
 			cleanUpLogs();  
-		}
+
+		} 
 	}
 	
 	private static void sendResponse(PrintWriter out, BufferedOutputStream dataOut, String status, String filePath) throws IOException {
@@ -288,10 +301,11 @@ public class URLShortner {
 		moveDataToNewNode(hash, ipAddress);
 	}
 	
-	private static void handleRemoveNode(String nextIpAddr) {
-		moveMainDataToNextNode(nextIpAddr);
-
+	private static String handleRemoveNode(String nextIpAddr) {
+		String result = moveMainDataToNextNode(nextIpAddr);
+		
 		System.out.println("Handling node removal. Next node IP: " + nextIpAddr);
+		return result;
 	}
 
 	private static void handleRemovePrevNode() {
@@ -341,20 +355,22 @@ public class URLShortner {
 		database.deleteRowsByHash(hash);
 	}
 
-	private static void moveMainDataToNextNode(String ipAddress) {
+	private static String moveMainDataToNextNode(String ipAddress) {
 		System.out.println("Transferring main data to the next node at IP: " + ipAddress);
 	
 		// Fetch data from the replica DB and move it to the new node
 		List<String[]> mainData = database.fetchMainData();
-	
+		String result = "";
 		for (String[] row : mainData) {
 			String shortURL = row[0];
 			String longURL = row[1];
 			String hash = row[2];
 	
 			// Send PUT request to the new node's replica DB
-			sendPutRequest(ipAddress, shortURL, longURL, hash, "R");  // 'R' for replica
+			String send = sendPutRequest(ipAddress, shortURL, longURL, hash, "R");  // 'R' for replica
+			result += send + "\n";
 		}
+		return result;
 	}
 
 	private static void moveReplicaDataToMainData() {
@@ -374,7 +390,7 @@ public class URLShortner {
 		database.clearReplicaData();
 	}
 
-	private static void sendPutRequest(String ipAddress, String shortURL, String longURL, String hash, String dbTarget) {
+	private static String sendPutRequest(String ipAddress, String shortURL, String longURL, String hash, String dbTarget) {
 		try {
 			Socket newNodeSocket = new Socket(ipAddress, 8082);  // Assumes new node listens on port 8082
 			PrintWriter out = new PrintWriter(newNodeSocket.getOutputStream());
@@ -385,8 +401,10 @@ public class URLShortner {
 			out.flush();
 	
 			newNodeSocket.close();
+			return "done successfully!";
 		} catch (IOException e) {
 			System.err.println("Error sending PUT request to new node: " + e.getMessage());
+			return e.getMessage();
 		}
 	}
 	

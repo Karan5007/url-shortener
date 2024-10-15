@@ -18,7 +18,7 @@ public class SimpleProxyServer {
 					+ "and local port " + localport);
 
 			// And start running the server
-			loadObject("savedConsistentHashing");
+
 			runServer(remoteport, localport); // never returns
 		} catch (Exception e) {
 			System.err.println(e);
@@ -31,14 +31,18 @@ public class SimpleProxyServer {
 	 */
 	public static void runServer(int remoteport, int localport)
 			throws IOException {
-		ConsistentHashing ch = new ConsistentHashing();
+		ConsistentHashing ch;
 
 		// Create a ServerSocket to listen for connections with
 		ServerSocket ss = new ServerSocket(localport);
 
 		// final byte[] request = new byte[1024];
 		// byte[] reply = new byte[4096];
-
+		ch = loadObject("savedConsistentHashing");
+		if (ch == null){
+			ch = new ConsistentHashing();
+		}
+		ch.printCircle();
 		while (true) {
 			Socket client = null, server = null;
 			try {
@@ -76,6 +80,7 @@ public class SimpleProxyServer {
         public void run() {
             Socket server = null;
             try {
+
                 // Create a connection to the remote server
                 
 				// read from the client
@@ -85,11 +90,13 @@ public class SimpleProxyServer {
 				//get input (request) from client
                 BufferedReader reader = new BufferedReader(new InputStreamReader(streamFromClient));
                 String inputLine = reader.readLine();
+				System.out.println("line 89");
 
 				//parse Request
                 if (inputLine != null) {
-                    ParsedRequest parsedRequest = parseRequest(inputLine);
+					System.out.println(inputLine);
 
+                    ParsedRequest parsedRequest = parseRequest(inputLine);
 					if (parsedRequest == null){
 						PrintWriter out = new PrintWriter(streamToClient);
 						out.print("HTTP/1.1 400 Bad Request\r\n");
@@ -112,6 +119,7 @@ public class SimpleProxyServer {
 						System.out.println("added node:  " + parsedRequest.shortResource);
 						ch.addNode(parsedRequest.shortResource);
 						saveObject(ch, "savedConsistentHashing");
+						ch.printCircle();
 						return;
 					}else if(parsedRequest.method == "remove"){ // TODO: account for data.
 						ch.removeNode(parsedRequest.shortResource); // TODO: need to account for data moving
@@ -175,6 +183,8 @@ public class SimpleProxyServer {
 							}
 						}
 
+
+
 						try {
 							server = new Socket(ipAddress, this.remoteport);
 						} catch (IOException e) {
@@ -192,6 +202,17 @@ public class SimpleProxyServer {
 						final OutputStream streamToServer2 = server.getOutputStream();
 						sendRemoveNodeRequest(nextIPAddress, streamToServer2);
 
+						BufferedReader inFromServer2 = new BufferedReader(new InputStreamReader(streamFromServer2));
+
+						responseLine = "";
+						while ((responseLine = inFromServer2.readLine()) != null) {
+							System.out.println("Response from server: " + responseLine);
+							// Break if you've read all the headers (the server will send an empty line to indicate the end of headers)
+							if (responseLine.isEmpty()) {
+								break;
+							}
+						}
+
 						return;
 					}
 
@@ -206,7 +227,8 @@ public class SimpleProxyServer {
 						this.replicationHost = ch.getIpAddress(replicationNode); 
 					}
 					System.out.println("Forwarding request to URL shortener at " + this.host + ":" + this.remoteport);
-					
+					System.out.println("Forwarding replication to URL shortener at " + this.replicationHost + ":" + this.remoteport);
+
 					try {
 						server = new Socket(this.host, this.remoteport);
 					} catch (IOException e) {
@@ -245,7 +267,7 @@ public class SimpleProxyServer {
 								
 							// Get server streams
 							final OutputStream streamToServer2 = server.getOutputStream();
-							handlePutRequest(parsedRequest, streamToServer, ch.hash(url), 'R');
+							handlePutRequest(parsedRequest, streamToServer2, ch.hash(url), 'R');
 						}
 
 					} else if (parsedRequest != null && parsedRequest.method.equals("GET")) {
@@ -287,7 +309,10 @@ public class SimpleProxyServer {
 
 	private static ParsedRequest parseRequest(String inputLine) {
     	//copying what we had form the node code.
-		Pattern premoveExisting = Pattern.compile("^PUT\\s+/\\?method=failedNode&ipAddr=(\\S+)$");
+		System.out.println("input:  " + inputLine);
+		// Pattern premoveExisting = Pattern.compile("^PUT\\s+/\\?method=failedNode&ipAddr=(\\S+)$");
+		Pattern premoveExisting = Pattern.compile("^PUT\\s+/\\?method=failedNode&ipAddr=(\\S+)\\s+(\\S+)$");
+
 		Pattern paddExisting = Pattern.compile("^PUT\\s+/\\?method=addedNode&ipAddr=(\\S+)$");
 		Pattern padd = Pattern.compile("^PUT\\s+/\\?method=simpleAddNode&ipAddr=(\\S+)$");
 
@@ -318,11 +343,11 @@ public class SimpleProxyServer {
 
             return new ParsedRequest("add", shortResource, null, null);
 		}else if(maddExisting.matches()) {
-			String shortResource = madd.group(1);
+			String shortResource = maddExisting.group(1);
 
             return new ParsedRequest("addWithExistingData", shortResource, null, null);
 		}else if(mremoveExisting.matches()) {
-			String shortResource = madd.group(1);
+			String shortResource = mremoveExisting.group(1);
 
             return new ParsedRequest("removeWithExistingData", shortResource, null, null);
 		}
@@ -332,6 +357,8 @@ public class SimpleProxyServer {
 
     // Handle PUT request
     private static void handlePutRequest(ParsedRequest parsedRequest, OutputStream streamToServer, int hash, char DB) throws IOException {
+		System.out.println("PUT /?short=" + parsedRequest.shortResource + "&long=" + parsedRequest.longResource + "&hash=" + hash + "&db=" + DB + " " + parsedRequest.httpVersion);
+
         PrintWriter outToServer = new PrintWriter(streamToServer);
         outToServer.println("PUT /?short=" + parsedRequest.shortResource + "&long=" + parsedRequest.longResource + "&hash=" + hash + "&db=" + DB + " " + parsedRequest.httpVersion);
         outToServer.println("Host: " + parsedRequest.shortResource);

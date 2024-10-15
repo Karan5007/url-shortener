@@ -27,7 +27,7 @@ public class ConsistentHashing implements Serializable{
 
 
     public int addNodeWithExistingData(String nodeIp) {
-        addNode(nodeIp);
+        //addNode(nodeIp);
         int hash = ipToHash.get(nodeIp);
         SortedMap<Integer, String> tailMap = circle.tailMap(hash);
         

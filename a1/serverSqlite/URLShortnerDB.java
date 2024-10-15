@@ -24,7 +24,7 @@ public class URLShortnerDB {
 
 
 	public URLShortnerDB(){ 
-		this("jdbc:sqlite:/virtual/409a1db/database.db", "jdbc:sqlite:/virtual/409a1db/replica_database.db");
+		this("jdbc:sqlite:/virtual/409a1dba/database.db", "jdbc:sqlite:/virtual/409a1dba/replica-database.db");
 	}
 	
 	public URLShortnerDB(String mainUrl, String replicaUrl){ 
@@ -157,7 +157,7 @@ public class URLShortnerDB {
             ps.execute();
             return true;
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }

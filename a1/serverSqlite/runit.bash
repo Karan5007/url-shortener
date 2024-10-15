@@ -1,11 +1,11 @@
 #!/bin/bash
+rm -r /virtual/409a1dba
+mkdir /virtual/409a1dba
+rm -f /virtual/409a1dba/database.db
+rm -f /virtual/409a1dba/replica-database.db
 
-mkdir -p /virtual/409a1db
-rm -f /virtual/409a1db/database.db
-rm -f /virtual/409a1db/replica-database.db
-
-sqlite3 /virtual/409a1db/database.db < schema.sql
-sqlite3 /virtual/409a1db/replica-database.db < schema.sql
+sqlite3 /virtual/409a1dba/database.db < schema.sql
+sqlite3 /virtual/409a1dba/replica-database.db < schema.sql
 
 ipAddr=$(ifconfig eno1 | grep 'inet ' | awk '{print $2}')
 javac URLShortner.java
