@@ -148,7 +148,7 @@ public class SimpleProxyServer {
 						String nextIPAddress = ch.getIpAddress(hashes.get(1));
 
 						try {
-							server = new Socket(ipAddress, this.remoteport);
+							server = new Socket(nextIPAddress, this.remoteport);
 						} catch (IOException e) {
 							PrintWriter out = new PrintWriter(streamToClient);
 							out.print("HTTP/1.1 502 Bad Gateway\r\n");
@@ -162,7 +162,35 @@ public class SimpleProxyServer {
 						}
 						final InputStream streamFromServer = server.getInputStream();
 						final OutputStream streamToServer = server.getOutputStream();
-						sendRemoveNodeRequest(nextIPAddress, streamToServer);
+						sendRemovePrevNodeRequest(streamToServer);
+
+						BufferedReader inFromServer = new BufferedReader(new InputStreamReader(streamFromServer));
+
+						String responseLine;
+						while ((responseLine = inFromServer.readLine()) != null) {
+							System.out.println("Response from server: " + responseLine);
+							// Break if you've read all the headers (the server will send an empty line to indicate the end of headers)
+							if (responseLine.isEmpty()) {
+								break;
+							}
+						}
+
+						try {
+							server = new Socket(ipAddress, this.remoteport);
+						} catch (IOException e) {
+							PrintWriter out = new PrintWriter(streamToClient);
+							out.print("HTTP/1.1 502 Bad Gateway\r\n");
+							out.print("Content-Type: text/plain\r\n");
+							out.print("\r\n");
+							out.print("Proxy server cannot connect to " + this.host + ":"
+									+ this.remoteport + ":\n" + e + "\n");
+							out.flush();
+							client.close();
+							return; 
+						}
+						final InputStream streamFromServer2 = server.getInputStream();
+						final OutputStream streamToServer2 = server.getOutputStream();
+						sendRemoveNodeRequest(nextIPAddress, streamToServer2);
 
 						return;
 					}
@@ -313,14 +341,21 @@ public class SimpleProxyServer {
 
 	private static void sendAddNodeRequest(int hash, String ipAddress, OutputStream streamToServer) throws IOException {
         PrintWriter outToServer = new PrintWriter(streamToServer);
-        outToServer.println("PUT /?method=addedNode" + "&hash=" + hash + "&ipAddress=" + ipAddress);
+        outToServer.println("PUT /?method=addedNode" + "&hash=" + hash + "&ipAddress=" + ipAddress + " HTTP/1.1");
         outToServer.println(); 
         outToServer.flush();
     }
 
 	private static void sendRemoveNodeRequest(String ipAddress, OutputStream streamToServer) throws IOException {
         PrintWriter outToServer = new PrintWriter(streamToServer);
-        outToServer.println("PUT /?method=removedNode" + "&nextIpAddr=" + ipAddress + ipAddress);
+        outToServer.println("PUT /?method=removedNode" + "&nextIpAddr=" + ipAddress + " HTTP/1.1");
+        outToServer.println(); 
+        outToServer.flush();
+    }
+
+	private static void sendRemovePrevNodeRequest(OutputStream streamToServer) throws IOException {
+        PrintWriter outToServer = new PrintWriter(streamToServer);
+        outToServer.println("PUT /?method=removedPrevNode HTTP/1.1");
         outToServer.println(); 
         outToServer.flush();
     }

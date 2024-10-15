@@ -190,48 +190,7 @@ public class URLShortnerDB {
         } catch (SQLException e) {
             System.out.println("Error clearing replica data: " + e.getMessage());
         }
-    }
-
-
-    private static void moveReplicaDataToNewNode(String ipAddress) {
-        System.out.println("Moving replica data to new node at IP: " + ipAddress);
-    
-        // Fetch data from the replica DB
-        List<String[]> replicaData = database.fetchReplicaData();
-    
-        for (String[] row : replicaData) {
-            String shortURL = row[0];
-            String longURL = row[1];
-            String hash = row[2];
-    
-            // Send PUT request to the new node's replica DB
-            sendPutRequest(ipAddress, shortURL, longURL, hash, "R");  // 'R' for replica
-        }
-    
-        // Clear the replica DB after transferring data
-        database.clearReplicaData();
-    }
-    
-    private static void moveDataToNewNode(int hash, String ipAddress) {
-        System.out.println("Moving data to new node at IP: " + ipAddress);
-    
-        // Fetch data from the main DB with hash <= specified hash
-        List<String[]> mainData = database.fetchDataByHash(hash);
-    
-        for (String[] row : mainData) {
-            String shortURL = row[0];
-            String longURL = row[1];
-            String rowHash = row[2];
-    
-            // Send PUT requests to the new node's main and replica DBs
-            sendPutRequest(ipAddress, shortURL, longURL, rowHash, "M");  // 'M' for main
-            sendPutRequest(ipAddress, shortURL, longURL, rowHash, "R");  // 'R' for replica
-        }
-    
-        // Delete transferred rows from the current node's main DB
-        database.deleteRowsByHash(hash);
-    }
-    
+    }    
 
     // Fetch all data from the main DB where hash <= maxHash
     public List<String[]> fetchDataByHash(int maxHash) {
@@ -240,6 +199,23 @@ public class URLShortnerDB {
             String sql = "SELECT shorturl, longurl, hash FROM bitly WHERE hash <= ?";
             PreparedStatement ps = mainConn.prepareStatement(sql);  // Use mainConn for main DB
             ps.setInt(1, maxHash);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                String[] entry = {rs.getString("shorturl"), rs.getString("longurl"), rs.getString("hash")};
+                data.add(entry);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error fetching main data by hash: " + e.getMessage());
+        }
+        return data;
+    }
+
+    // Fetch all data from the main DB
+    public List<String[]> fetchMainData() {
+        List<String[]> data = new ArrayList<>();
+        try {
+            String sql = "SELECT shorturl, longurl, hash FROM bitly";
+            PreparedStatement ps = mainConn.prepareStatement(sql);  // Use mainConn for main DB
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 String[] entry = {rs.getString("shorturl"), rs.getString("longurl"), rs.getString("hash")};

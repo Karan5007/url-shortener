@@ -17,6 +17,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.util.Date;
+import java.util.List;
 import java.util.StringTokenizer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -157,15 +158,27 @@ public class URLShortner {
 				return;
 			}
 	
-			// Handle node removal
-			Pattern pRemoveNode = Pattern.compile("^PUT\\s+/\\?method=removedNode&nextIpAddr=(\\S+)\\s+(\\S+)$");
-			Matcher mRemoveNode = pRemoveNode.matcher(input);
-			if (mRemoveNode.matches()) {
-				String nextIpAddr = mRemoveNode.group(1);
-				String httpVersion = mRemoveNode.group(2);
+			// Handle node removal as previous Node
+			Pattern pRemoveNextNode = Pattern.compile("^PUT\\s+/\\?method=removedNode&nextIpAddr=(\\S+)\\s+(\\S+)$");
+			Matcher mRemoveNextNode = pRemoveNextNode.matcher(input);
+			if (mRemoveNextNode.matches()) {
+				String nextIpAddr = mRemoveNextNode.group(1);
+				String httpVersion = mRemoveNextNode.group(2);
 	
 				// Handle node removal logic
 				handleRemoveNode(nextIpAddr);
+	
+				sendResponse(out, dataOut, "HTTP/1.1 200 OK", REDIRECT_RECORDED);
+				return;
+			}
+
+			// Handle node removal as previous Node
+			Pattern pRemovePrevNode = Pattern.compile("^PUT\\s+/\\?method=removedPrevNode\\s+(\\S+)$");
+			Matcher mRemovePrevNode = pRemovePrevNode.matcher(input);
+			if (mRemovePrevNode.matches()) {
+				String httpVersion = mRemovePrevNode.group(1);
+	
+				handleRemovePrevNode();
 	
 				sendResponse(out, dataOut, "HTTP/1.1 200 OK", REDIRECT_RECORDED);
 				return;
@@ -276,7 +289,15 @@ public class URLShortner {
 	}
 	
 	private static void handleRemoveNode(String nextIpAddr) {
+		moveMainDataToNextNode(nextIpAddr);
+
 		System.out.println("Handling node removal. Next node IP: " + nextIpAddr);
+	}
+
+	private static void handleRemovePrevNode() {
+		moveReplicaDataToMainData();
+
+		System.out.println("Handling node removal.");
 	}
 
 	private static void moveReplicaDataToNewNode(String ipAddress) {
@@ -312,11 +333,45 @@ public class URLShortner {
 	
 			// Send PUT requests to the new node's main and replica databases
 			sendPutRequest(ipAddress, shortURL, longURL, rowHash, "M");  // 'M' for main
-			sendPutRequest(ipAddress, shortURL, longURL, rowHash, "R");  // 'R' for replica
+			database.saveToReplica(shortURL, longURL, rowHash);
+			// sendPutRequest(ipAddress, shortURL, longURL, rowHash, "R");  // 'R' for replica
 		}
 	
 		// Delete transferred rows from the original node's main DB
 		database.deleteRowsByHash(hash);
+	}
+
+	private static void moveMainDataToNextNode(String ipAddress) {
+		System.out.println("Transferring main data to the next node at IP: " + ipAddress);
+	
+		// Fetch data from the replica DB and move it to the new node
+		List<String[]> mainData = database.fetchMainData();
+	
+		for (String[] row : mainData) {
+			String shortURL = row[0];
+			String longURL = row[1];
+			String hash = row[2];
+	
+			// Send PUT request to the new node's replica DB
+			sendPutRequest(ipAddress, shortURL, longURL, hash, "R");  // 'R' for replica
+		}
+	}
+
+	private static void moveReplicaDataToMainData() {
+		System.out.println("Transferring Replica Data to Main Data: ");
+	
+		// Fetch data from the replica DB and move it to the new node
+		List<String[]> replicaData = database.fetchReplicaData();
+	
+		for (String[] row : replicaData) {
+			String shortURL = row[0];
+			String longURL = row[1];
+			String hash = row[2];
+	
+			// Send PUT request to the new node's replica DB
+			database.saveToMain(shortURL, longURL, hash);
+		}
+		database.clearReplicaData();
 	}
 
 	private static void sendPutRequest(String ipAddress, String shortURL, String longURL, String hash, String dbTarget) {
