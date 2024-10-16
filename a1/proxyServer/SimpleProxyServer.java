@@ -128,8 +128,9 @@ public class SimpleProxyServer {
  					} else if(parsedRequest.method == "addWithExistingData"){
 						System.out.println("added node:  " + parsedRequest.shortResource);
 						int hash = ch.addNodeWithExistingData(parsedRequest.shortResource);
+						int nextHash = ch.getNextHash(hash);
 						saveObject(ch, "savedConsistentHashing");
-						String ipAddress = ch.getIpAddress(hash);
+						String ipAddress = ch.getIpAddress(nextHash);
 						
 						try {
 							server = new Socket(ipAddress, this.remoteport);
@@ -296,9 +297,16 @@ public class SimpleProxyServer {
 					// and pass them back to the client.
 					byte[] reply = new byte[4096];
 					int bytesRead;
+					server.setSoTimeout(20);
+					// StringBuilder responseBuilder = new StringBuilder();
+
 					while ((bytesRead = streamFromServer.read(reply)) != -1) {
+						String chunk = new String(reply, 0, bytesRead);
 						streamToClient.write(reply, 0, bytesRead);
 						streamToClient.flush();
+						// if (chunk.contains("</html>")) {
+						// 	break;
+						// }
 					}
 
 					System.out.println("Sending response back to client.");
@@ -384,6 +392,7 @@ public class SimpleProxyServer {
     }
 
 	private static void sendAddNodeRequest(int hash, String ipAddress, OutputStream streamToServer) throws IOException {
+		System.out.println("PUT /?method=addedNode" + "&hash=" + hash + "&ipAddress=" + ipAddress + " HTTP/1.1");
         PrintWriter outToServer = new PrintWriter(streamToServer);
         outToServer.println("PUT /?method=addedNode" + "&hash=" + hash + "&ipAddress=" + ipAddress + " HTTP/1.1");
         outToServer.println(); 

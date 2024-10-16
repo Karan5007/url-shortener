@@ -29,7 +29,7 @@ public class ConsistentHashing implements Serializable{
     public int addNodeWithExistingData(String nodeIp) {
         // addNode(nodeIp);
         int hash = ipToHash.get(nodeIp);
-        SortedMap<Integer, String> tailMap = circle.tailMap(hash+1);
+        SortedMap<Integer, String> tailMap = circle.tailMap(hash);
         
         int nextHash = tailMap.isEmpty() ? circle.firstKey() : tailMap.firstKey();
         return nextHash;

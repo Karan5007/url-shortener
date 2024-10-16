@@ -144,6 +144,8 @@ public class URLShortner {
 				logWriter.println("First line: " + input);
 				logWriter.println("Handling request from: " + connect.getInetAddress() + " on thread: " + threadName);
 			}
+			System.out.println("Handling request from: " + connect.getInetAddress() + " on thread: " + input);
+
 			
 			// Handle node addition
 			Pattern pAddNode = Pattern.compile("^PUT\\s+/\\?method=addedNode&hash=(\\d+)&ipAddress=(\\S+)\\s+(\\S+)$");
@@ -176,8 +178,8 @@ public class URLShortner {
 				out.println("Date: " + new Date());
 				out.println("Content-type: text/html");
 				out.println("Content-length: " + result.length());
+				
 				out.println();
-				out.println(result);
 				out.flush();
 	
 	
@@ -328,7 +330,7 @@ public class URLShortner {
 	private static String handleAddNode(int hash, String ipAddress) {
 		String output = moveReplicaDataToNewNode(ipAddress);
 		String output2 = moveDataToNewNode(hash, ipAddress);
-		return output;
+		return output2;
 	}
 	
 	private static String handleRemoveNode(String nextIpAddr) {
@@ -345,25 +347,24 @@ public class URLShortner {
 	}
 
 	private static String moveReplicaDataToNewNode(String ipAddress) {
-		System.out.println("Transferring replica data to the newly added node at IP: " + ipAddress);
-	
-		// Fetch data from the replica DB and move it to the new node
-		List<String[]> replicaData = database.fetchReplicaData();
-		String result = "";
-		for (String[] row : replicaData) {
-			String shortURL = row[0];
-			String longURL = row[1];
-			String hash = row[2];
-	
-			// Send PUT request to the new node's replica DB
-			result += sendPutRequest(ipAddress, shortURL, longURL, hash, "R");  // 'R' for replica
-		}
-	
-		// Clear the current node's replica DB after transferring data
-		database.clearReplicaData();
-		return result;
-	}
-	
+        System.out.println("Transferring replica data to the newly added node at IP: " + ipAddress);
+
+        // Fetch data from the replica DB and move it to the new node
+        List<String[]> replicaData = database.fetchReplicaData();
+        String result = "";
+        for (String[] row : replicaData) {
+            String shortURL = row[0];
+            String longURL = row[1];
+            String hash = row[2];
+
+            // Send PUT request to the new node's replica DB
+            result += sendPutRequest(ipAddress, shortURL, longURL, hash, "R");  // 'R' for replica
+        }
+
+        // Clear the current node's replica DB after transferring data
+        database.clearReplicaData();
+        return result;
+    }
 	
 	private static String moveDataToNewNode(int hash, String ipAddress) {
 		System.out.println("Transferring data based on hash to the newly added node at IP: " + ipAddress);
@@ -375,9 +376,8 @@ public class URLShortner {
 			String shortURL = row[0];
 			String longURL = row[1];
 			String rowHash = row[2];
-			output += rowHash + " ";
 			// Send PUT requests to the new node's main and replica databases
-			sendPutRequest(ipAddress, shortURL, longURL, rowHash, "M");  // 'M' for main
+			output += sendPutRequest(ipAddress, shortURL, longURL, rowHash, "M");  // 'M' for main
 			database.saveToReplica(shortURL, longURL, rowHash);
 			// sendPutRequest(ipAddress, shortURL, longURL, rowHash, "R");  // 'R' for replica
 		}
@@ -426,6 +426,17 @@ public class URLShortner {
 		database.clearReplicaData();
 	}
 
+	private static void sendPersistentPutRequest(PrintWriter out, String ipAddress, String shortURL, String longURL, String hash, String dbTarget) {
+			out.println("PUT /?short=" + shortURL + "&long=" + longURL + "&hash=" + hash + "&db=" + dbTarget + " HTTP/1.1");
+			out.println("Host: " + ipAddress);
+			out.println("Connection: keep-alive"); // Ensures the connection stays open
+			out.println();  // End of headers
+			out.flush();
+			
+			
+		
+	}
+
 	private static String sendPutRequest(String ipAddress, String shortURL, String longURL, String hash, String dbTarget) {
 		Socket newNodeSocket = null;
 		try {
@@ -438,6 +449,13 @@ public class URLShortner {
 			out.flush();
 			
 			newNodeSocket.close();
+			try {
+				// Adding a delay of 100 milliseconds
+				Thread.sleep(20);  // Delay in milliseconds
+			} catch (InterruptedException e) {
+				// Handle the InterruptedException if the thread is interrupted
+				System.err.println("Thread was interrupted: " + e.getMessage());
+			}
 			return "done successfully!";
 		} catch (IOException e) {
 			System.err.println("Error sending PUT request to new node: " + e.getMessage());
