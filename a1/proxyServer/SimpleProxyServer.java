@@ -13,7 +13,7 @@ public class SimpleProxyServer {
 			int remoteport = 8082;
 			int localport = 8081;
 			// Print a start-up message
-			// System.out.println("Starting proxy for " + host + ":" + remoteport + " on port " + localport); // old print statement
+			System.out.println("Starting proxy for " + host + ":" + remoteport + " on port " + localport); // old print statement
 			System.out.println("Starting proxy for hosting  on port remote port: " + remoteport
 					+ "and local port " + localport);
 
@@ -297,7 +297,7 @@ public class SimpleProxyServer {
 					// and pass them back to the client.
 					byte[] reply = new byte[4096];
 					int bytesRead;
-					server.setSoTimeout(20);
+					server.setSoTimeout(50);
 					// StringBuilder responseBuilder = new StringBuilder();
 
 					while ((bytesRead = streamFromServer.read(reply)) != -1) {

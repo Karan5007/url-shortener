@@ -10,3 +10,5 @@ if [ -n "$PID" ]; then
 else
     echo "No Server process found on port $PORT."
 fi
+
+rm savedConsistentHashing
