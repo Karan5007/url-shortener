@@ -20,7 +20,7 @@ public class URLShortnerDB {
     // Cache for Replica DB
     private Map<String, String> replicaCache;
     
-    private static final int CACHE_SIZE = 100; 
+    private static final int CACHE_SIZE = 2000; 
 
 
 	public URLShortnerDB(){ 
@@ -187,6 +187,9 @@ public class URLShortnerDB {
             String sql = "DELETE FROM bitly";  // Same schema table, so clear it entirely
             Statement stmt = replicaConn.createStatement();  // Use replicaConn for replica DB operations
             stmt.executeUpdate(sql);
+
+            replicaCache.clear();
+
         } catch (SQLException e) {
             System.out.println("Error clearing replica data: " + e.getMessage());
         }
@@ -233,13 +236,11 @@ public class URLShortnerDB {
             PreparedStatement ps = mainConn.prepareStatement(sql);
             ps.setInt(1, maxHash);
             ps.executeUpdate();
+            mainCache.clear();
         } catch (SQLException e) {
             System.out.println("Error deleting rows from main DB: " + e.getMessage());
         }
     }
-    
-
-    
 
 	public void closeConnections() {
         try {

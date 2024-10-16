@@ -13,7 +13,7 @@ public class SimpleProxyServer {
 			int remoteport = 8082;
 			int localport = 8081;
 			// Print a start-up message
-			// System.out.println("Starting proxy for " + host + ":" + remoteport + " on port " + localport); // old print statement
+			System.out.println("Starting proxy for " + host + ":" + remoteport + " on port " + localport); // old print statement
 			System.out.println("Starting proxy for hosting  on port remote port: " + remoteport
 					+ "and local port " + localport);
 

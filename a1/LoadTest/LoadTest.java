@@ -58,7 +58,7 @@ public class LoadTest {
 	
 	    HttpResponse<String> response =
 	          client.send(request, HttpResponse.BodyHandlers.ofString());
-	    System.out.println(response.body());
+	    // System.out.println(response.body());
 	    client.close();
 	}
 	public static void get(String uri) throws Exception {
@@ -72,6 +72,6 @@ public class LoadTest {
 	          client.send(request, HttpResponse.BodyHandlers.ofString());
 	    client.close();
 	
-	    System.out.println(response.body());
+	    // System.out.println(response.body());
 	}
 }
