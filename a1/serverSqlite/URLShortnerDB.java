@@ -3,10 +3,48 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.sql.PreparedStatement;
+import java.util.ArrayList;
+import java.util.List;
 
 public class URLShortnerDB {
-	private static Connection connect(String url) {
+	
+	private Connection mainConn=null;
+	private Connection replicaConn=null;
+
+    // Cache for Main DB
+    private Map<String, String> mainCache;
+    
+    // Cache for Replica DB
+    private Map<String, String> replicaCache;
+    
+    private static final int CACHE_SIZE = 2000; 
+
+
+	public URLShortnerDB(){ 
+		this("jdbc:sqlite:/virtual/409a1dba/database.db", "jdbc:sqlite:/virtual/409a1dba/replica-database.db");
+	}
+	
+	public URLShortnerDB(String mainUrl, String replicaUrl){ 
+		mainConn = URLShortnerDB.connect(mainUrl);
+        replicaConn = URLShortnerDB.connect(replicaUrl);
+
+        mainCache = new LinkedHashMap<>(CACHE_SIZE, 0.75f, true) {
+            protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+                return size() > CACHE_SIZE;
+            }
+        };
+        
+        replicaCache = new LinkedHashMap<>(CACHE_SIZE, 0.75f, true) {
+            protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+                return size() > CACHE_SIZE;  
+            }
+        };
+	}
+
+    private static Connection connect(String url) {
 		Connection conn = null;
 		try {
 			conn = DriverManager.getConnection(url);
@@ -24,47 +62,196 @@ public class URLShortnerDB {
 
 		} catch (SQLException e) {
 			System.out.println(e.getMessage());
-        	}
+		}
 		return conn;
 	}
+	
+	public String findInMain(String shortURL) {
+        if (mainCache.containsKey(shortURL)) {
+            return mainCache.get(shortURL);
+        }
 
-	private Connection conn=null;
-	public URLShortnerDB(){ this("jdbc:sqlite:/virtual/sing1871/database.db"); }
-	public URLShortnerDB(String url){ conn = URLShortnerDB.connect(url); }
+        String longURL = find(shortURL, mainConn);
 
-			   
-	public String find(String shortURL) {
-		try {
-			Statement stmt  = conn.createStatement();
-			String sql = "SELECT longurl FROM bitly WHERE shorturl=?;";
-			PreparedStatement ps = conn.prepareStatement(sql);
-			ps.setString(1,shortURL);
-			ResultSet rs = ps.executeQuery();
+        if (longURL != null) {
+            mainCache.put(shortURL, longURL);
+        }
+        return longURL;
+    }
 
-			if(rs.next()) return rs.getString("longurl");
-			else return null; 
+    public String findInReplica(String shortURL) {
+        if (replicaCache.containsKey(shortURL)) {
+            return replicaCache.get(shortURL);
+        }
 
-		} catch (SQLException e) {
-			System.out.println(e.getMessage());
-		}
-		return null;
+        String longURL = find(shortURL, replicaConn);
+
+        if (longURL != null) {
+            replicaCache.put(shortURL, longURL);
+        }
+        return longURL;
+    }
+
+	private String find(String shortURL, Connection conn) {
+        try {
+            String sql = "SELECT longurl FROM bitly WHERE shorturl=?;";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, shortURL);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getString("longurl");
+            } else {
+                return null;
+            }
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+            return null;
+        }
+    }
+
+    public Map<String, String> findUrlsInHashRange(String hashStart, String hashEnd, boolean useMainDb) {
+        Connection conn = useMainDb ? mainConn : replicaConn;
+        Map<String, String> results = new LinkedHashMap<>();
+    
+        try {
+            String sql = "SELECT shorturl, longurl FROM bitly WHERE hash >= ? AND hash <= ?;";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, hashStart);
+            ps.setString(2, hashEnd);
+            ResultSet rs = ps.executeQuery();
+    
+            while (rs.next()) {
+                results.put(rs.getString("shorturl"), rs.getString("longurl"));
+            }
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+        return results;
+    }
+
+	public boolean saveToMain(String shortURL, String longURL, String hash) {
+		boolean result = save(shortURL, longURL, hash, mainConn);
+        if (result) {
+            mainCache.put(shortURL, longURL);
+        }
+        return result;
+	}
+	
+	public boolean saveToReplica(String shortURL, String longURL, String hash) {
+		boolean result = save(shortURL, longURL, hash, replicaConn);
+        if (result) {
+            replicaCache.put(shortURL, longURL);
+        }
+        return result;
 	}
 
-	public boolean save(String shortURL,String longURL){
-		// System.out.println("shorturl="+shortURL+" longurl="+longURL);
-		try {
-			String insertSQL = "INSERT INTO bitly(shorturl,longurl) VALUES(?,?) ON CONFLICT(shorturl) DO UPDATE SET longurl=?;";
-			PreparedStatement ps = conn.prepareStatement(insertSQL);
-			ps.setString(1, shortURL);
-			ps.setString(2, longURL);
-			ps.setString(3, longURL);
-			ps.execute();
+	private boolean save(String shortURL, String longURL, String hash, Connection conn) {
+        try {
+            String insertSQL = "INSERT INTO bitly(shorturl,longurl,hash) VALUES(?,?,?) ON CONFLICT(shorturl) DO UPDATE SET longurl=?, hash=?;";
+            PreparedStatement ps = conn.prepareStatement(insertSQL);
+            ps.setString(1, shortURL);
+            ps.setString(2, longURL);
+            ps.setString(3, hash);  // Save the hash
+            ps.setString(4, longURL);
+            ps.setString(5, hash);  // Update hash on conflict
+            ps.execute();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
-			return true;
+    // Fetch all data from the replica DB
+    public List<String[]> fetchReplicaData() {
+        List<String[]> data = new ArrayList<>();
+        try {
+            String sql = "SELECT shorturl, longurl, hash FROM bitly";  
+            Statement stmt = replicaConn.createStatement();  
+            ResultSet rs = stmt.executeQuery(sql);  
+            while (rs.next()) {
+                String[] entry = {rs.getString("shorturl"), rs.getString("longurl"), rs.getString("hash")};
+                data.add(entry);
+            }
+            rs.close();
+            stmt.close();
+        } catch (SQLException e) {
+            System.out.println("Error fetching data from replica DB: " + e.getMessage());
+        }
+        return data;
+    }
 
-		} catch (SQLException e) {
-			System.out.println(e.getMessage());
-			return false;
-		}
-	}
+    // Clear the replica DB after transferring data
+    public void clearReplicaData() {
+        try {
+            String sql = "DELETE FROM bitly";  // Same schema table, so clear it entirely
+            Statement stmt = replicaConn.createStatement();  // Use replicaConn for replica DB operations
+            stmt.executeUpdate(sql);
+
+            replicaCache.clear();
+
+        } catch (SQLException e) {
+            System.out.println("Error clearing replica data: " + e.getMessage());
+        }
+    }    
+
+    // Fetch all data from the main DB where hash <= maxHash
+    public List<String[]> fetchDataByHash(int maxHash) {
+        List<String[]> data = new ArrayList<>();
+        try {
+            String sql = "SELECT shorturl, longurl, hash FROM bitly WHERE hash <= ?";
+            PreparedStatement ps = mainConn.prepareStatement(sql);  // Use mainConn for main DB
+            ps.setInt(1, maxHash);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                String[] entry = {rs.getString("shorturl"), rs.getString("longurl"), rs.getString("hash")};
+                data.add(entry);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error fetching main data by hash: " + e.getMessage());
+        }
+        return data;
+    }
+
+    // Fetch all data from the main DB
+    public List<String[]> fetchMainData() {
+        List<String[]> data = new ArrayList<>();
+        try {
+            String sql = "SELECT shorturl, longurl, hash FROM bitly";
+            PreparedStatement ps = mainConn.prepareStatement(sql);  // Use mainConn for main DB
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                String[] entry = {rs.getString("shorturl"), rs.getString("longurl"), rs.getString("hash")};
+                data.add(entry);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error fetching main data by hash: " + e.getMessage());
+        }
+        return data;
+    }
+
+    public void deleteRowsByHash(int maxHash) {
+        try {
+            String sql = "DELETE FROM bitly WHERE hash <= ?";
+            PreparedStatement ps = mainConn.prepareStatement(sql);
+            ps.setInt(1, maxHash);
+            ps.executeUpdate();
+            mainCache.clear();
+        } catch (SQLException e) {
+            System.out.println("Error deleting rows from main DB: " + e.getMessage());
+        }
+    }
+
+	public void closeConnections() {
+        try {
+            if (mainConn != null) {
+                mainConn.close();
+            }
+            if (replicaConn != null) {
+                replicaConn.close();
+            }
+        } catch (SQLException e) {
+            System.out.println("Error closing database connections: " + e.getMessage());
+        }
+    }
 }
