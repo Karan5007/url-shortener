@@ -130,6 +130,7 @@ public class SimpleProxyServer {
 						int hash = ch.addNodeWithExistingData(parsedRequest.shortResource);
 						saveObject(ch, "savedConsistentHashing");
 						String ipAddress = ch.getIpAddress(hash);
+						
 						try {
 							server = new Socket(ipAddress, this.remoteport);
 						} catch (IOException e) {
@@ -157,6 +158,7 @@ public class SimpleProxyServer {
 								break;
 							}
 						}
+						
 
 						return;
 					}else if(parsedRequest.method == "removeWithExistingData"){
@@ -175,7 +177,7 @@ public class SimpleProxyServer {
 							out.print("HTTP/1.1 502 Bad Gateway\r\n");
 							out.print("Content-Type: text/plain\r\n");
 							out.print("\r\n");
-							out.print("Proxy server cannot connect to " + this.host + ":"
+							out.print("Proxy server cannot connect to " + nextIPAddress + ":"
 									+ this.remoteport + ":\n" + e + "\n");
 							out.flush();
 							client.close();

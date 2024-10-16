@@ -62,7 +62,7 @@ public class URLShortner {
 		//open up our port to listen
 		try {
 			serverConnect = new ServerSocket(PORT);
-			System.out.println("Server started.\nListening for connections on port : " + PORT + " ...\n");
+			// System.out.println("Server started.\nListening for connections on port : " + PORT + " ...\n");
 			
 			
 			// ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(1);
@@ -72,7 +72,9 @@ public class URLShortner {
 
 			// we listen until user halts server execution
 			while (true) {
-				if (verbose) { System.out.println("Connection opened. (" + new Date() + ")"); }
+				if (verbose) { 
+					// System.out.println("Connection opened. (" + new Date() + ")"); 
+					}
 
 				final Socket clientSocket = serverConnect.accept();
 				threadPool.execute(()-> handle(clientSocket));
@@ -142,7 +144,7 @@ public class URLShortner {
 				logWriter.println("First line: " + input);
 				logWriter.println("Handling request from: " + connect.getInetAddress() + " on thread: " + threadName);
 			}
-	
+			
 			// Handle node addition
 			Pattern pAddNode = Pattern.compile("^PUT\\s+/\\?method=addedNode&hash=(\\d+)&ipAddress=(\\S+)\\s+(\\S+)$");
 			Matcher mAddNode = pAddNode.matcher(input);
@@ -279,6 +281,23 @@ public class URLShortner {
 			cleanUpLogs();  
 
 		} 
+		// finally{
+		// 	try {
+		// 		if (in != null) in.close();
+		// 		if (out != null) out.close();
+		// 		if (dataOut != null) dataOut.close();
+		// 		if (connect != null) connect.close();
+		// 		if (logWriter != null) {
+		// 			logWriter.println("Connection closed on thread: " + Thread.currentThread().getName());
+		// 			logWriter.close();
+		// 		}
+		// 	} catch (Exception e2) {
+		// 		System.err.println("Error closing streams or socket: " + e2.getMessage());
+		// 	}
+			
+		// 	// closeSocket();  
+		// 	// cleanUpLogs();  
+		// }
 	}
 	
 	private static void sendResponse(PrintWriter out, BufferedOutputStream dataOut, String status, String filePath) throws IOException {
@@ -408,20 +427,30 @@ public class URLShortner {
 	}
 
 	private static String sendPutRequest(String ipAddress, String shortURL, String longURL, String hash, String dbTarget) {
+		Socket newNodeSocket = null;
 		try {
-			Socket newNodeSocket = new Socket(ipAddress, 8082);  // Assumes new node listens on port 8082
+			newNodeSocket = new Socket(ipAddress, 8082);  // Assumes new node listens on port 8082
 			PrintWriter out = new PrintWriter(newNodeSocket.getOutputStream());
 	
 			out.println("PUT /?short=" + shortURL + "&long=" + longURL + "&hash=" + hash + "&db=" + dbTarget + " HTTP/1.1");
 			out.println("Host: " + ipAddress);
 			out.println();  // End of headers
 			out.flush();
-	
+			
 			newNodeSocket.close();
 			return "done successfully!";
 		} catch (IOException e) {
 			System.err.println("Error sending PUT request to new node: " + e.getMessage());
 			return e.getMessage();
+		} finally{
+			try{
+				if(newNodeSocket != null){
+					newNodeSocket.close();
+				}
+			}catch (IOException e) {
+				return "IO exception";
+			}
+			
 		}
 	}
 	
