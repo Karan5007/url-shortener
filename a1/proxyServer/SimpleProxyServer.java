@@ -297,19 +297,30 @@ public class SimpleProxyServer {
 					// and pass them back to the client.
 					byte[] reply = new byte[4096];
 					int bytesRead;
-					server.setSoTimeout(20);
 					// StringBuilder responseBuilder = new StringBuilder();
-
+					server.setSoTimeout(50);
 					while ((bytesRead = streamFromServer.read(reply)) != -1) {
 						String chunk = new String(reply, 0, bytesRead);
 						streamToClient.write(reply, 0, bytesRead);
 						streamToClient.flush();
-						// if (chunk.contains("</html>")) {
-						// 	break;
-						// }
+						if (chunk.contains("</html>")) {
+							break;
+						}
 					}
+					server.setSoTimeout(1);
+					while ((bytesRead = streamFromServer.read(reply)) != -1) {
+						String chunk = new String(reply, 0, bytesRead);
+						streamToClient.write(reply, 0, bytesRead);
+						streamToClient.flush();
+						if (chunk.contains("</html>")) {
+							break;
+						}
+					}
+					// while(true){
+					// 	//System.out.println("Sending response back to client.");
+					// }
+					
 
-					System.out.println("Sending response back to client.");
 					// The server closed its connection to us, so we close our
 					// connection to our client.
 					
