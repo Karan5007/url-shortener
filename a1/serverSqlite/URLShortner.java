@@ -241,6 +241,19 @@ public class URLShortner {
 				}
 	
 				sendResponse(out, dataOut, "HTTP/1.1 200 OK", REDIRECT_RECORDED);
+
+				try {
+					if (in != null) in.close();
+					if (out != null) out.close();
+					if (dataOut != null) dataOut.close();
+					if (connect != null) connect.close();
+					if (logWriter != null) {
+						logWriter.println("Connection closed on thread: " + Thread.currentThread().getName());
+						logWriter.close();
+					}
+				} catch (Exception e2) {
+					System.err.println("Error closing streams or socket: " + e2.getMessage());
+				}
 				return;
 			}
 	
@@ -261,11 +274,26 @@ public class URLShortner {
 				} else {
 					longResource = null;
 				}
-	
+				
+				System.out.println("Sending this to client: " + longResource);
 				if (longResource != null) {
 					sendResponse(out, dataOut, "HTTP/1.1 307 Temporary Redirect", REDIRECT, longResource);
 				} else {
 					sendResponse(out, dataOut, "HTTP/1.1 404 File Not Found", FILE_NOT_FOUND);
+				}
+				System.out.println("Sending this to client: " + longResource);
+
+				try {
+					if (in != null) in.close();
+					if (out != null) out.close();
+					if (dataOut != null) dataOut.close();
+					if (connect != null) connect.close();
+					if (logWriter != null) {
+						logWriter.println("Connection closed on thread: " + Thread.currentThread().getName());
+						logWriter.close();
+					}
+				} catch (Exception e2) {
+					System.err.println("Error closing streams or socket: " + e2.getMessage());
 				}
 			}
 
@@ -291,25 +319,25 @@ public class URLShortner {
 			closeSocket();  
 			cleanUpLogs();  
 
-		} 
+		}
 		
-		// finally{
-		// 	try {
-		// 		if (in != null) in.close();
-		// 		if (out != null) out.close();
-		// 		if (dataOut != null) dataOut.close();
-		// 		if (connect != null) connect.close();
-		// 		if (logWriter != null) {
-		// 			logWriter.println("Connection closed on thread: " + Thread.currentThread().getName());
-		// 			logWriter.close();
-		// 		}
-		// 	} catch (Exception e2) {
-		// 		logError("Error closing streams or socket: " + e2.getMessage());
-		// 	}
+		finally{
+			try {
+				if (in != null) in.close();
+				if (out != null) out.close();
+				if (dataOut != null) dataOut.close();
+				if (connect != null) connect.close();
+				if (logWriter != null) {
+					logWriter.println("Connection closed on thread: " + Thread.currentThread().getName());
+					logWriter.close();
+				}
+			} catch (Exception e2) {
+				System.err.println("Error closing streams or socket: " + e2.getMessage());
+			}
 			
 		// 	// closeSocket();  
 		// 	// cleanUpLogs();  
-		// }
+		}
 	}
 	
 	private static void sendResponse(PrintWriter out, BufferedOutputStream dataOut, String status, String filePath) throws IOException {

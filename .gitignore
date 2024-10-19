@@ -1,0 +1,16 @@
+# VS code
+.vscode/*
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+.vscode/extensions.json
+.vscode/*.code-snippets
+
+# NFS
+.nfs*
+
+# Our logging
+../serverSqlite/thread_logs/thread_pool-1-thread-*_log.txt
+
+# OS addons 
+.DS_store # Macbook 
