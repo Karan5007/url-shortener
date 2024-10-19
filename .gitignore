@@ -1,8 +1,16 @@
-.nfs*
+# VS code
 .vscode/*
 .vscode/settings.json
 .vscode/tasks.json
 .vscode/launch.json
 .vscode/extensions.json
 .vscode/*.code-snippets
-.DS_store
+
+# NFS
+.nfs*
+
+# Our logging
+.thread_pool-*
+
+# OS addons 
+.DS_store # Macbook 
