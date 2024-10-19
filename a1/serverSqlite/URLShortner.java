@@ -18,14 +18,13 @@ import java.net.Socket;
 import java.net.URL;
 import java.util.Date;
 import java.util.List;
-import java.util.StringTokenizer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.net.InetAddress;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class URLShortner { 
 	
@@ -37,6 +36,7 @@ public class URLShortner {
 	static final String REDIRECT = "redirect.html";
 	static final String NOT_FOUND = "notfound.html";
 	static URLShortnerDB database=null;
+
 	// port to listen connection
 	static final int PORT = 8082;
     static ServerSocket serverConnect = null;
@@ -44,6 +44,11 @@ public class URLShortner {
 
 	static final int MAX_THREADS = 10;
 	static File logDir = new File("thread_logs");
+	static String ipAddress;
+
+	static PrintWriter serverLogger = null;
+	private static SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
 
 	// verbose mode
 	static final boolean verbose = false;
@@ -51,18 +56,23 @@ public class URLShortner {
 	public static void main(String[] args) {
 		ExecutorService threadPool = Executors.newFixedThreadPool(MAX_THREADS);  
 		database = new URLShortnerDB();
-
+		
 		//TODO: send a signal to connect 
 		String host = "142.1.46.25"; // Ip address of simply proxy server
-		String ipAddress = args[0];
+		ipAddress = args[0];
 		int proxyPort = 8081;
+
+	
+
+		initServerLogger();
+		logInfo("Server is starting...");
 
 		connectToProxy(host, proxyPort, ipAddress);
 	
 		//open up our port to listen
 		try {
 			serverConnect = new ServerSocket(PORT);
-			// System.out.println("Server started.\nListening for connections on port : " + PORT + " ...\n");
+			// logInfo("Server started.\nListening for connections on port : " + PORT + " ...\n");
 			
 			
 			// ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(1);
@@ -73,14 +83,14 @@ public class URLShortner {
 			// we listen until user halts server execution
 			while (true) {
 				if (verbose) { 
-					// System.out.println("Connection opened. (" + new Date() + ")"); 
+					// logInfo("Connection opened. (" + new Date() + ")"); 
 					}
 
 				final Socket clientSocket = serverConnect.accept();
 				threadPool.execute(()-> handle(clientSocket));
 			}
 		} catch (IOException e) {
-			System.err.println("Server Connection error : " + e.getMessage());
+			logError("Server Connection error : " + e.getMessage());
 			closeSocket();
 			cleanUpLogs();
 		}
@@ -90,7 +100,7 @@ public class URLShortner {
 	private static void connectToProxy(String host, int port, String ipAddress) {
 		try  {
 			server = new Socket(host, port);
-			System.out.println("Connected to proxy server at " + host + ":" + port);
+			logInfo("Connected to proxy server at " + host + ":" + port);
 
 			InputStream streamFromServer = null;
 			OutputStream streamToServer = null;
@@ -102,16 +112,16 @@ public class URLShortner {
 			outToServer.println(); 
 			outToServer.flush();
 	
-			System.out.println("Sent awake signal to proxy server at " + host + ":" + port);
+			logInfo("Sent awake signal to proxy server at " + host + ":" + port);
 		} catch (IOException e) {
-			System.out.println("Unable to connect to proxy server at " + host + ":" + port + ". Will retry...");
+			logError("Unable to connect to proxy server at " + host + ":" + port + ". Will retry...");
 		} finally {
 			// Ensure resources are closed in case of an exception
 			if (server != null) {
 				try {
 					server.close();
 				} catch (IOException e) {
-					System.err.println("Error closing proxy connection socket: " + e.getMessage());
+					logError("Error closing proxy connection socket: " + e.getMessage());
 				}
 			}
 		}
@@ -123,6 +133,7 @@ public class URLShortner {
 		PrintWriter out = null;
 		BufferedOutputStream dataOut = null;
 		PrintWriter logWriter = null;
+		String hostInfo=ipAddress+"_"+ getHostname();
 	
 		try {
 			in = new BufferedReader(new InputStreamReader(connect.getInputStream()));
@@ -130,7 +141,7 @@ public class URLShortner {
 			dataOut = new BufferedOutputStream(connect.getOutputStream());
 	
 			String threadName = Thread.currentThread().getName();
-			String logFileName = "thread_logs/thread_" + threadName + "_log.txt";
+			String logFileName = "thread_logs/"+hostInfo+"thread_" + threadName + "_log.txt";
 			if (!new File("thread_logs").exists()) {
 				new File("thread_logs").mkdir();
 			}
@@ -142,8 +153,8 @@ public class URLShortner {
 				logWriter.println("First line: " + input);
 				logWriter.println("Handling request from: " + connect.getInetAddress() + " on thread: " + threadName);
 			}
-			System.out.println("Handling request from: " + connect.getInetAddress() + " on thread: " + input);
-
+			logInfo("Handling request from: " + connect.getInetAddress() + " on thread: " + input);
+			
 			
 			// Handle node addition
 			Pattern pAddNode = Pattern.compile("^PUT\\s+/\\?method=addedNode&hash=(\\d+)&ipAddress=(\\S+)\\s+(\\S+)$");
@@ -219,7 +230,7 @@ public class URLShortner {
 	
 				if (dbTarget == null || "M".equalsIgnoreCase(dbTarget)) {
 					synchronized (database) {
-						System.out.println("input:   " + input);
+						logInfo("input:   " + input);
 
 						database.saveToMain(shortResource, longResource, hash);  // Save to main DB with hash
 					}
@@ -291,7 +302,7 @@ public class URLShortner {
 			if (logWriter != null) {
 				logWriter.println("Server error: " + e.getMessage());
 			}
-			System.err.println("Server error: " + e.getMessage());
+			logError("Server error: " + e.getMessage());
 
 			try {
 				if (in != null) in.close();
@@ -303,7 +314,7 @@ public class URLShortner {
 					logWriter.close();
 				}
 			} catch (Exception e2) {
-				System.err.println("Error closing streams or socket: " + e2.getMessage());
+				logError("Error closing streams or socket: " + e2.getMessage());
 			}
 			closeSocket();  
 			cleanUpLogs();  
@@ -339,7 +350,6 @@ public class URLShortner {
 		String contentMimeType = "text/html";
 		byte[] fileData = readFileData(file, fileLength);
 		
-
 		out.println(status);
 		if (location != null) {
 			out.println("Location: " + location);
@@ -350,7 +360,7 @@ public class URLShortner {
 		out.println("Content-length: " + fileLength);
 		out.println();
 		out.flush();
-	
+		
 		dataOut.write(fileData, 0, fileLength);
 		dataOut.flush();
 	}
@@ -364,39 +374,40 @@ public class URLShortner {
 	private static String handleRemoveNode(String nextIpAddr) {
 		String result = moveMainDataToNextNode(nextIpAddr);
 		
-		System.out.println("Handling node removal. Next node IP: " + nextIpAddr);
+		serverLogger.println("Handling node removal. Next node IP: " + nextIpAddr);
+		serverLogger.flush();
 		return nextIpAddr;
 	}
-
+	
 	private static void handleRemovePrevNode(String ipAddr) {
 		moveReplicaDataToMainData(ipAddr);
-
-		System.out.println("Handling node removal.");
+		
+		logInfo("Handling node removal.");
 	}
-
+	
 	private static String moveReplicaDataToNewNode(String ipAddress) {
-        System.out.println("Transferring replica data to the newly added node at IP: " + ipAddress);
-
+		logInfo("Transferring replica data to the newly added node at IP: " + ipAddress);
+		
         // Fetch data from the replica DB and move it to the new node
         List<String[]> replicaData = database.fetchReplicaData();
         String result = "";
         for (String[] row : replicaData) {
-            String shortURL = row[0];
+			String shortURL = row[0];
             String longURL = row[1];
             String hash = row[2];
-
+			
             // Send PUT request to the new node's replica DB
             result += sendPutRequest(ipAddress, shortURL, longURL, hash, "R");  // 'R' for replica
         }
-
+		
         // Clear the current node's replica DB after transferring data
         database.clearReplicaData();
         return result;
     }
 	
 	private static String moveDataToNewNode(int hash, String ipAddress) {
-		System.out.println("Transferring data based on hash to the newly added node at IP: " + ipAddress);
-	
+		serverLogger.println("Transferring data based on hash to the newly added node at IP: " + ipAddress);
+		
 		// Fetch data from the main DB with hash <= specified hash
 		List<String[]> mainData = database.fetchDataByHash(hash);
 		String output = "";
@@ -409,16 +420,17 @@ public class URLShortner {
 			database.saveToReplica(shortURL, longURL, rowHash);
 			// sendPutRequest(ipAddress, shortURL, longURL, rowHash, "R");  // 'R' for replica
 		}
-	
+		
 		// Delete transferred rows from the original node's main DB
 		database.deleteRowsByHash(hash);
-
+		serverLogger.flush();
 		return output;
 	}
-
-	private static String moveMainDataToNextNode(String ipAddress) {
-		System.out.println("Transferring main data to the next node at IP: " + ipAddress);
 	
+	private static String moveMainDataToNextNode(String ipAddress) {
+		serverLogger.println("Transferring main data to the next node at IP: " + ipAddress);
+		serverLogger.flush();
+		
 		// Fetch data from the replica DB and move it to the new node
 		List<String[]> mainData = database.fetchMainData();
 		String result = "something";
@@ -426,7 +438,7 @@ public class URLShortner {
 			String shortURL = row[0];
 			String longURL = row[1];
 			String hash = row[2];
-	
+			
 			// Send PUT request to the new node's replica DB
 			String send = sendPutRequest(ipAddress, shortURL, longURL, hash, "R");  // 'R' for replica
 			result += ipAddress;
@@ -435,42 +447,43 @@ public class URLShortner {
 	}
 
 	private static void moveReplicaDataToMainData(String ipAddress) {
-		System.out.println("Transferring Replica Data to Main Data: ");
+		serverLogger.println("Transferring Replica Data to Main Data: ");
+		serverLogger.flush();
 	
 		// Fetch data from the replica DB and move it to the new node
 		List<String[]> replicaData = database.fetchReplicaData();
-	
+		
 		for (String[] row : replicaData) {
 			String shortURL = row[0];
 			String longURL = row[1];
 			String hash = row[2];
-	
+			
 			// Send PUT request to the new node's replica DB
 			database.saveToMain(shortURL, longURL, hash);
 			String send = sendPutRequest(ipAddress, shortURL, longURL, hash, "R");  // 'R' for replica
-
-
+			
+			
 		}
 		database.clearReplicaData();
 	}
-
+	
 	private static void sendPersistentPutRequest(PrintWriter out, String ipAddress, String shortURL, String longURL, String hash, String dbTarget) {
-			out.println("PUT /?short=" + shortURL + "&long=" + longURL + "&hash=" + hash + "&db=" + dbTarget + " HTTP/1.1");
-			out.println("Host: " + ipAddress);
-			out.println("Connection: keep-alive"); // Ensures the connection stays open
-			out.println();  // End of headers
-			out.flush();
-			
+		out.println("PUT /?short=" + shortURL + "&long=" + longURL + "&hash=" + hash + "&db=" + dbTarget + " HTTP/1.1");
+		out.println("Host: " + ipAddress);
+		out.println("Connection: keep-alive"); // Ensures the connection stays open
+		out.println();  // End of headers
+		out.flush();
 			
 		
+		
 	}
-
+	
 	private static String sendPutRequest(String ipAddress, String shortURL, String longURL, String hash, String dbTarget) {
 		Socket newNodeSocket = null;
 		try {
 			newNodeSocket = new Socket(ipAddress, 8082);  // Assumes new node listens on port 8082
 			PrintWriter out = new PrintWriter(newNodeSocket.getOutputStream());
-	
+			
 			out.println("PUT /?short=" + shortURL + "&long=" + longURL + "&hash=" + hash + "&db=" + dbTarget + " HTTP/1.1");
 			out.println("Host: " + ipAddress);
 			out.println();  // End of headers
@@ -482,11 +495,11 @@ public class URLShortner {
 				Thread.sleep(20);  // Delay in milliseconds
 			} catch (InterruptedException e) {
 				// Handle the InterruptedException if the thread is interrupted
-				System.err.println("Thread was interrupted: " + e.getMessage());
+				logError("Thread was interrupted: " + e.getMessage());
 			}
 			return "done successfully!";
 		} catch (IOException e) {
-			System.err.println("Error sending PUT request to new node: " + e.getMessage());
+			logError("Error sending PUT request to new node: " + e.getMessage());
 			return e.getMessage();
 		} finally{
 			try{
@@ -501,30 +514,32 @@ public class URLShortner {
 	}
 	
 	
-
+	
 	private static void cleanUpLogs() {
-        if (logDir.exists() && logDir.isDirectory()) {
-            File[] logFiles = logDir.listFiles();
+		if (logDir.exists() && logDir.isDirectory()) {
+			File[] logFiles = logDir.listFiles();
             if (logFiles != null) {
-                for (File logFile : logFiles) {
-                    logFile.delete();
+				for (File logFile : logFiles) {
+					logFile.delete();
                 }
             }
-            System.out.println("Log files and directory cleaned up.");
+            serverLogger.println("Log files and directory cleaned up.");
+			serverLogger.flush();
         }
     }
-
+	
 	private static void closeSocket() {
 		if (serverConnect != null && !serverConnect.isClosed()) {
-		    try {
-		        serverConnect.close();
-		        System.out.println("Server socket closed due to an exception.");
+			try {
+				serverConnect.close();
+		        serverLogger.println("Server socket closed due to an exception.");
+				serverLogger.flush();
 		    } catch (IOException closeEx) {
-		        System.err.println("Error closing server socket after exception: " + closeEx.getMessage());
+				logError("Error closing server socket after exception: " + closeEx.getMessage());
 		    }
 		}
 	}
-
+	
 	private static byte[] readFileData(File file, int fileLength) throws IOException {
 		FileInputStream fileIn = null;
 		byte[] fileData = new byte[fileLength];
@@ -534,9 +549,46 @@ public class URLShortner {
 			fileIn.read(fileData);
 		} finally {
 			if (fileIn != null) 
-				fileIn.close();
+			fileIn.close();
 		}
 		
 		return fileData;
+	}
+	private static String getHostname() {
+		try{
+			return InetAddress.getLocalHost().getHostName();
+		} catch (Exception e){
+			logError(e.getMessage());
+			return "unknown hostname";
+		}
+	}
+
+	private static void initServerLogger() {
+		String hostname = getHostname();
+		String logFileName = "server_logs/" + ipAddress + "_" + hostname + "_server_log.txt";
+	
+		try {
+			File logDir = new File("server_logs");
+			if (!logDir.exists()) {
+				logDir.mkdir();
+			}
+			serverLogger = new PrintWriter(new BufferedWriter(new FileWriter(logFileName, true)));
+		} catch (IOException e) {
+			logError("Error initializing server logger: " + e.getMessage());
+		}
+	}
+
+	private static void logError(String message) {
+		if (serverLogger != null) {
+			serverLogger.println("[" + sdf.format(new Date()) + "] [ERROR] " + message);
+			serverLogger.flush();
+		}
+	}
+	
+	private static void logInfo(String message) {
+		if (serverLogger != null) {
+			serverLogger.println("[" + sdf.format(new Date()) + "] [INFO] " + message);
+			serverLogger.flush();
+		}
 	}
 }
