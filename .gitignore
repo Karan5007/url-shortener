@@ -10,7 +10,7 @@
 .nfs*
 
 # Our logging
-thread_pool-1-thread-*_log.txt
+../serverSqlite/thread_logs/thread_pool-1-thread-*_log.txt
 
 # OS addons 
 .DS_store # Macbook 
