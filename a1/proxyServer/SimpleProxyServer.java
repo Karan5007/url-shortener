@@ -2,19 +2,62 @@ import java.io.*;
 import java.net.*;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+
 public class SimpleProxyServer {
 
+	public static HostFileManager hostFileManager = new HostFileManager();
+
 	public static void main(String[] args) throws IOException {
+
+		InetAddress startAddress = InetAddress.getLocalHost();
+		String addressAssString = startAddress.getHostAddress();
+		System.out.println("I am running on: " + addressAssString);
+
+		//TODO TEST MONITOR LOGIC
+		System.out.println("start of if statement");
+		boolean firstTime = false;
+		if (args.length > 0) {
+			// Parse the first argument as a boolean (true/false)
+			firstTime = Boolean.parseBoolean(args[0]);
+			System.out.println("inside if statement, boolean value is" + firstTime);
+		}
+
+		if (firstTime) {
+			System.out.println("if statement for adding to hostfile");
+			String addressAsString = "";
+			try {
+				InetAddress currentAddress = InetAddress.getLocalHost();
+				addressAsString = currentAddress.getHostAddress();
+				hostFileManager.addHost(addressAsString, "Proxy");
+			} catch (IOException e) {
+				System.err.println("Error reading hosts file: " + e.getMessage());
+				return;
+			}
+
+		}
+
+		 int MONITOR_INTERVAL = 10; // Monitor interval in seconds
+
+		ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+		scheduler.scheduleAtFixedRate(SimpleProxyServer::monitorTheMonitor, 0, MONITOR_INTERVAL, TimeUnit.SECONDS);
+
 		try {
 			String host = "127.0.0.1"; // commenting this out, since we want diffrent hosts
 			int remoteport = 8082;
 			int localport = 8081;
 			// Print a start-up message
-			System.out.println("Starting proxy for " + host + ":" + remoteport + " on port " + localport); // old print
-																											// statement
+			// System.out.println("Starting proxy for " + host + ":" + remoteport + " on
+			// port " + localport); // old print statement
 			System.out.println("Starting proxy for hosting  on port remote port: " + remoteport
 					+ "and local port " + localport);
 
@@ -26,10 +69,164 @@ public class SimpleProxyServer {
 		}
 	}
 
-	/**
-	 * runs a single-threaded proxy server on
-	 * the specified local port. It never returns.
-	 */
+	public static void monitorTheMonitor() {
+		String MonitorIp = "";
+		HostFileManager hostFileManager = new HostFileManager();
+		boolean restart = false;
+
+		// read file
+		Map<String, String> nodes;
+		try {
+			nodes = hostFileManager.readHosts(); // Retrieve nodes from hostFile with their statuses
+		} catch (IOException e) {
+			System.err.println("Error reading hosts file: " + e.getMessage());
+			return;
+		}
+		// find monitor iP
+		for (Map.Entry<String, String> entry : nodes.entrySet()) {
+			// The key is in the format "IP:Service"
+			String[] ipAndService = entry.getKey().split(":");
+			String nodeIP = ipAndService[0]; // Extract IP
+			String service = ipAndService[1]; // Extract Service type
+			String status = entry.getValue(); // Get current status (alive/failed)
+
+			// Only monitor nodes that are currently marked as "alive"
+			if (service.equals("Monitor")) {
+				MonitorIp = nodeIP;
+				if (status.equals("failed")) { // this has already been identifed as failed, move on.
+					return;
+				}
+				break; // we found the Ip of the monitor
+			}
+		}
+
+		if (MonitorIp.equals("")) { // no montior found
+			return; // TODO: maybe to the bottom instead?
+			// restart = true;
+		}
+
+		// run bash script
+		if (restart == false) { // try to ping monitor
+			try {
+
+				Process p = new ProcessBuilder("./Orchestration/monitorPing.bash", MonitorIp).start();
+				boolean finished = p.waitFor(10, TimeUnit.SECONDS); // Wait for a maximum of 10 seconds
+				if (!finished) {
+					p.destroy();
+					System.err.println("FATAL! Error running bash script: monitorPing Process Timeout");
+					return;
+				}
+				int exitCode = p.exitValue();
+				if (exitCode == 0) {
+					System.out.println("Successfully Pinged Monitor App running @ " + MonitorIp);
+					return;
+				} else if (exitCode == 1) {
+					System.out.println("Monitor is down! Attempting recovery");
+					restart = true;
+					hostFileManager.updateHostStatus(MonitorIp, "Monitor", "failed");
+				}
+
+			} catch (IOException | InterruptedException e) {
+				System.err.println("Error running pingMonitor bash script: " + e.getMessage());
+				return;
+			}
+
+		}
+
+		if (restart == true) {
+			String addressAsString;
+			// Get available nodes from the hostFile
+			Map<String, String> availableNodes;
+			try {
+				availableNodes = hostFileManager.readHosts(); // Retrieve available nodes from hostFile
+				InetAddress currentAddress = InetAddress.getLocalHost();
+				addressAsString = currentAddress.getHostAddress();
+
+			} catch (IOException e) {
+				System.err.println("Error reading hosts file: " + e.getMessage());
+				return;
+			}
+
+			String og_monitor_ip = MonitorIp;
+			// run bash scrip to restart Monitor
+			for (Map.Entry<String, String> entry : availableNodes.entrySet()) {
+				String[] ipAndService = entry.getKey().split(":");
+				String nodeIP = ipAndService[0]; // Extract IP
+				String service = ipAndService[1]; // Extract Service type
+				String status = entry.getValue(); // Get current status (alive/failed)
+
+				// TODO: add the case where there is only one
+				if (!(nodeIP.equals(addressAsString))){
+					if (startUpMonitorScript(nodeIP)) {
+						System.out.println("Bash script executed on node: (" + nodeIP + ")");
+						MonitorIp = nodeIP;
+						System.out.println(addressAsString);
+						try {
+							hostFileManager.deleteHost(og_monitor_ip, "Monitor");
+							hostFileManager.addHost(MonitorIp, "Monitor");
+
+						} catch (IOException e) {
+
+							System.err.println("Error editing hosts file: " + e.getMessage());
+						}
+
+						return; // Break after successfully running the script on one node
+					} else {
+						System.err.println("Failed to run bash script on node: " + nodeIP + ")");
+					}
+				}
+				
+				// Execute the bash script on the chosen node
+				// In this case, we'll run the script locally for demonstration purposes
+
+			}
+
+			System.err.println("FATAL! Failed to run startup script on all nodes! No Monitor service is running!");
+
+			// add new IP to host
+			try {
+				hostFileManager.addHost(MonitorIp, "Monitor");
+			} catch (IOException e) {
+				System.err.println("Failed to add to hostFile" + e.getMessage());
+			}
+
+			// run bash scrip to restart
+		}
+
+		// if on the exit value of the bash script
+
+		// CASE: if exit != 0 (the monitor is not running)
+
+		// remove the monitor from the hostFile
+
+		// look for an alternative place to revive the monitor
+
+		// start the monitor
+
+		// add the monitor to hostFile
+
+	}
+
+	private static boolean startUpMonitorScript(String nodeIP) {
+		try {
+
+			Process p = new ProcessBuilder("./Orchestration/startMonitorRemote.bash", nodeIP).start();
+			boolean finished = p.waitFor(10, TimeUnit.SECONDS); // Wait for a maximum of 10 seconds
+			if (!finished) {
+				// System.out.println("!finsih loop, not enough time to execute");
+				p.destroy();
+				return false;
+			}
+			int exitCode = p.exitValue();
+			// System.out.println("exit value = " + exitCode);
+			return exitCode == 0;
+
+		} catch (IOException | InterruptedException e) {
+			System.err.println("Error running bash script: " + e.getMessage());
+			return false;
+		}
+	}
+
 	public static void runServer(int remoteport, int localport)
 			throws IOException {
 		ConsistentHashing ch;
@@ -122,11 +319,23 @@ public class SimpleProxyServer {
 						System.out.println("added node:  " + parsedRequest.shortResource);
 						ch.addNode(parsedRequest.shortResource);
 						saveObject(ch, "savedConsistentHashing");
+						try {
+							hostFileManager.addHost(parsedRequest.shortResource, "DBnode");
+						} catch (IOException e) {
+							System.err.println("Error in Hostfilemanager add : " + e.getMessage());	
+							e.printStackTrace();
+						} 
 						ch.printCircle();
 						return;
-					} else if (parsedRequest.method == "remove") { // TODO: account for data.
-						ch.removeNode(parsedRequest.shortResource); // TODO: need to account for data moving
+					} else if (parsedRequest.method == "remove") { 
+						ch.removeNode(parsedRequest.shortResource); 
 						saveObject(ch, "savedConsistentHashing");
+						try {
+							hostFileManager.deleteHost(parsedRequest.shortResource, "DBnode");
+						} catch (IOException e) {
+							System.err.println("Error in Hostfilemanager remove : " + e.getMessage());	
+							e.printStackTrace();
+						}  
 						return;
 					} else if (parsedRequest.method == "addWithExistingData") {
 						System.out.println("added node:  " + parsedRequest.shortResource);
@@ -168,7 +377,13 @@ public class SimpleProxyServer {
 					} else if (parsedRequest.method == "removeWithExistingData") {
 						System.out.println("removed node:  " + parsedRequest.shortResource);
 						List<Integer> hashes = ch.removeNodeWithExistingData(parsedRequest.shortResource);
-						saveObject(ch, "savedConsistentHashing");
+						
+						try {
+							hostFileManager.deleteHost(parsedRequest.shortResource, "DBnode");
+						} catch (IOException e) {
+							System.err.println("Error in Hostfilemanager remove : " + e.getMessage());	
+							e.printStackTrace();
+						}  
 						String ipAddress = ch.getIpAddress(hashes.get(0));
 						String nextIPAddress = ch.getIpAddress(hashes.get(1));
 
@@ -302,7 +517,7 @@ public class SimpleProxyServer {
 							// StringBuilder responseBuilder = new StringBuilder();
 							// server.setSoTimeout(50);
 							while ((bytesRead = streamFromServer2.read(reply)) != -1) {
-								//reading response of the replica
+								// reading response of the replica
 								String chunk = new String(reply, 0, bytesRead);
 								streamToClient.write(reply, 0, bytesRead);
 								streamToClient.flush();
@@ -317,7 +532,7 @@ public class SimpleProxyServer {
 
 					} else if (parsedRequest != null && parsedRequest.method.equals("GET")) {
 						handleGetRequest(parsedRequest, streamToServer);
-						
+
 					}
 
 					System.out.println("Received for response from URL shortener.");
@@ -362,12 +577,19 @@ public class SimpleProxyServer {
 				System.err.println(e);
 			} finally {
 				try {
-					if (server != null)
+					if (server != null){
 						server.close();
-					if (Replication_server != null)
+						// System.out.println("shut down server");
+					}
+						
+					if (Replication_server != null){
 						Replication_server.close();
+						// System.out.println("shut down replica server");
+					}
+						
 					if (client != null)
 						client.close();
+						// System.out.println("shut down client connection");
 				} catch (IOException e) {
 					System.err.println("Error closing sockets: " + e.getMessage());
 				}
@@ -502,4 +724,4 @@ public class SimpleProxyServer {
 		}
 	}
 
-} // end of SimpleProxyServer
+}

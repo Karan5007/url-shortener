@@ -2,6 +2,7 @@
 
 javac SimpleProxyServer.java
 javac ConsistentHashing.java 
-java SimpleProxyServer &
+javac HostFileManager.java
+java SimpleProxyServer true &
 
 

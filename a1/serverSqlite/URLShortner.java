@@ -56,17 +56,26 @@ public class URLShortner {
 	public static void main(String[] args) {
 		ExecutorService threadPool = Executors.newFixedThreadPool(MAX_THREADS);  
 		database = new URLShortnerDB();
+		ipAddress = args[0];
 		
 		//TODO: send a signal to connect 
-		String host = "142.1.46.25"; // Ip address of simply proxy server
-		ipAddress = args[0];
-		int proxyPort = 8081;
-
-	
-
+		String host = "142.1.46.25"; // Ip address of simply proxy server.
+		//  dh2026pc22 = "142.1.46.25"
+		// docker Ubuntu1 = 172.20.0.2
+		// dh2026pc23 = ?
+		
+		if (args.length > 1) {
+			// Parse the second argument as, ipadder for server.
+			host = args[1];
+			System.out.println("ipadder of proxy: " + host);
+			// host = ipAddress;
+		}
+		
+		
+		
 		initServerLogger();
 		logInfo("Server is starting...");
-
+		int proxyPort = 8081;
 		connectToProxy(host, proxyPort, ipAddress);
 	
 		//open up our port to listen
@@ -121,7 +130,7 @@ public class URLShortner {
 				try {
 					server.close();
 				} catch (IOException e) {
-					logError("Error closing proxy connection socket: " + e.getMessage());
+					logError("Error closing Proxy connection socket: " + e.getMessage());
 				}
 			}
 		}
@@ -153,8 +162,12 @@ public class URLShortner {
 				logWriter.println("First line: " + input);
 				logWriter.println("Handling request from: " + connect.getInetAddress() + " on thread: " + threadName);
 			}
+	
 			logInfo("Handling request from: " + connect.getInetAddress() + " on thread: " + input);
-			
+
+			if (input == null ){
+				return;
+			}		
 			
 			// Handle node addition
 			Pattern pAddNode = Pattern.compile("^PUT\\s+/\\?method=addedNode&hash=(\\d+)&ipAddress=(\\S+)\\s+(\\S+)$");
@@ -507,7 +520,7 @@ public class URLShortner {
 					newNodeSocket.close();
 				}
 			}catch (IOException e) {
-				return "IO exception";
+				return "IO exception, coukd not close newNodeSocket" + e.getMessage();
 			}
 			
 		}

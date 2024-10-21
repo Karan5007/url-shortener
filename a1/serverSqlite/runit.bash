@@ -22,4 +22,4 @@ sqlite3 /virtual/409a1dbk/replica.db < schema.sql
 
 ipAddr=$(ifconfig eno1 | grep 'inet ' | awk '{print $2}')
 javac URLShortner.java
-java -classpath ".:sqlite-jdbc-3.39.3.0.jar" URLShortner $ipAddr &
+java -classpath ".:sqlite-jdbc-3.39.3.0.jar" URLShortner $ipAddr $ipAddr &
