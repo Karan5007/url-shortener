@@ -1,14 +1,15 @@
 #!/bin/bash
 
 CWD = 'pwd'
-# Assuming that pc22 is our home PC
-ssh -o StrictHostKeyChecking=no dh2026pc23 " cd $CWD MonitorApp && ./startMonitorFirstTime.bash' 
 
-cd ../MonitorApp
-echo "Starting monitor..."
-./startMonitor.bash &
-MONITOR_PID=$!
-echo "Monitor started with PID $MONITOR_PID"
+rm monitor/hosts.properties
+rm proxyServer/savedConsistentHashing
+# Assuming that pc22 is our home PC
+ssh -o StrictHostKeyChecking=no dh2026pc23 "cd $CWD/monitor && ./startMonitorFirstTime.bash;
+
+sleep 3
+
+echo "Monitor started with on dh2026pc23
 
 cd proxyServer
 echo "Starting proxy server..."
@@ -29,6 +30,5 @@ sleep 3
 echo "Processes running:"
 echo "Proxy PID: $PROXY_PID"
 echo "Hosts PID: $HOSTS_PID"
-echo "Monitor PID: $MONITOR_PID"
 
-wait $PROXY_PID $HOSTS_PID $MONITOR_PID
+wait $PROXY_PID $HOSTS_PID 
