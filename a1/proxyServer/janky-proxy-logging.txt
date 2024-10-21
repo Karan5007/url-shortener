@@ -1,0 +1,7 @@
+I am running on: 142.1.46.25
+start of if statement
+Starting proxy for hosting  on port remote port: 8082and local port 8081
+Hash Circle:
+
+IP to Hash Map:
+waiting....  

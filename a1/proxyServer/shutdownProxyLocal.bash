@@ -11,4 +11,4 @@ else
     echo "No Server process found on port $PORT."
 fi
 
-rm savedConsistentHashing
+# rm savedConsistentHashing
