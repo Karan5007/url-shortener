@@ -56,35 +56,30 @@ public class URLShortner {
 	public static void main(String[] args) {
 		ExecutorService threadPool = Executors.newFixedThreadPool(MAX_THREADS);  
 		database = new URLShortnerDB();
-		
-		//TODO: send a signal to connect 
-		String host = "142.1.46.25"; // Ip address of simply proxy server
 		ipAddress = args[0];
-		int proxyPort = 8081;
-
-	
-
+		
+		String host = "142.1.46.25"; // Ip address of simply proxy server.
+		
+		
+		if (args.length > 1) {
+			// Parse the second argument as, ipadder for server.
+			host = args[1];
+			System.out.println("ipadder of proxy: " + host);
+		}
+		
+		
+		
 		initServerLogger();
 		logInfo("Server is starting...");
-
+		int proxyPort = 8081;
 		connectToProxy(host, proxyPort, ipAddress);
 	
 		//open up our port to listen
 		try {
 			serverConnect = new ServerSocket(PORT);
-			// logInfo("Server started.\nListening for connections on port : " + PORT + " ...\n");
-			
-			
-			// ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(1);
-        	// scheduler.scheduleAtFixedRate(() -> connectToProxy(host, proxyPort, ipAddress), 0, 60, TimeUnit.SECONDS); // send awake signal every 60 seconds
-
-
 
 			// we listen until user halts server execution
 			while (true) {
-				if (verbose) { 
-					// logInfo("Connection opened. (" + new Date() + ")"); 
-					}
 
 				final Socket clientSocket = serverConnect.accept();
 				threadPool.execute(()-> handle(clientSocket));
@@ -121,7 +116,7 @@ public class URLShortner {
 				try {
 					server.close();
 				} catch (IOException e) {
-					logError("Error closing proxy connection socket: " + e.getMessage());
+					logError("Error closing Proxy connection socket: " + e.getMessage());
 				}
 			}
 		}
@@ -153,8 +148,12 @@ public class URLShortner {
 				logWriter.println("First line: " + input);
 				logWriter.println("Handling request from: " + connect.getInetAddress() + " on thread: " + threadName);
 			}
+	
 			logInfo("Handling request from: " + connect.getInetAddress() + " on thread: " + input);
-			
+
+			if (input == null ){
+				return;
+			}		
 			
 			// Handle node addition
 			Pattern pAddNode = Pattern.compile("^PUT\\s+/\\?method=addedNode&hash=(\\d+)&ipAddress=(\\S+)\\s+(\\S+)$");
@@ -183,7 +182,7 @@ public class URLShortner {
 
 				out.println("HTTP/1.1 200 OK");
 				
-				out.println(result + "Server:sfdsfdsfdsf : 1.0");
+				out.println("Server: Java HTTP Server/Shortner : 1.0");
 				out.println("Date: " + new Date());
 				out.println("Content-type: text/html");
 				out.println("Content-length: " + result.length());
@@ -191,8 +190,6 @@ public class URLShortner {
 				out.println();
 				out.flush();
 	
-	
-				//sendResponse(out, result, "HTTP/1.1 200 OK", REDIRECT_RECORDED);
 				return;
 			}
 
@@ -207,14 +204,13 @@ public class URLShortner {
 
 				out.println("HTTP/1.1 200 OK");
 				
-				out.println(nextIpAddr + "Server:sddd : 1.0");
+				out.println("Server: Java HTTP Server/Shortner : 1.0");
 				out.println("Date: " + new Date());
 				out.println("Content-type: text/html");
 				out.println("Content-length: 51");
 				out.println();
 				out.flush();
 	
-				//sendResponse(out, dataOut, nextIpAddr + "HTTP/1.1 200 OK", REDIRECT_RECORDED);
 				return;
 			}
 	
@@ -275,13 +271,11 @@ public class URLShortner {
 					longResource = null;
 				}
 				
-				System.out.println("Sending this to client: " + longResource);
 				if (longResource != null) {
 					sendResponse(out, dataOut, "HTTP/1.1 307 Temporary Redirect", REDIRECT, longResource);
 				} else {
 					sendResponse(out, dataOut, "HTTP/1.1 404 File Not Found", FILE_NOT_FOUND);
 				}
-				System.out.println("Sending this to client: " + longResource);
 
 				try {
 					if (in != null) in.close();
@@ -334,9 +328,7 @@ public class URLShortner {
 			} catch (Exception e2) {
 				System.err.println("Error closing streams or socket: " + e2.getMessage());
 			}
-			
-		// 	// closeSocket();  
-		// 	// cleanUpLogs();  
+			 
 		}
 	}
 	
@@ -418,7 +410,6 @@ public class URLShortner {
 			// Send PUT requests to the new node's main and replica databases
 			output += sendPutRequest(ipAddress, shortURL, longURL, rowHash, "M");  // 'M' for main
 			database.saveToReplica(shortURL, longURL, rowHash);
-			// sendPutRequest(ipAddress, shortURL, longURL, rowHash, "R");  // 'R' for replica
 		}
 		
 		// Delete transferred rows from the original node's main DB
@@ -507,7 +498,7 @@ public class URLShortner {
 					newNodeSocket.close();
 				}
 			}catch (IOException e) {
-				return "IO exception";
+				return "IO exception, coukd not close newNodeSocket" + e.getMessage();
 			}
 			
 		}

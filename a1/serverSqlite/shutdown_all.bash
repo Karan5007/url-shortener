@@ -5,6 +5,7 @@ HOSTS_FILE="hosts.txt"
 
 for host in $(cat "$HOSTS_FILE"); do
     echo "Shutting down server on $host..."
+    sleep 10
     ssh $host "./a1group05/a1/serverSqlite/shutdown_local.bash"
     # ssh $host "./CSC409/a1group05/a1/serverSqlite/shutdown_local.bash" # for karan! 
 done

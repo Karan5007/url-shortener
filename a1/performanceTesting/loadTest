@@ -1,4 +1,5 @@
 #!/bin/bash
-ab -n 1000 -c 10 -g load.tsv http://localhost:8081/000000000000000000000000000000000000000
+./../Loadtest/Loadtest2.bash &
+ab -n 10000 -c 10 -g load.tsv http://localhost:8081/000000000000000000000000000000000000000
 
 

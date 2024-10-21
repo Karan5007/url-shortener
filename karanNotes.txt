@@ -1,0 +1,30 @@
+commands to keep on hand when running cluster:
+pkill -f 'java SimpleProxyServer' ; echo $?
+pkill -f 'java MonitorApp' ; echo $?
+rm hosts.properties
+pkill -f 'URLShortner' ; echo $?
+
+ifconfig eno1 | grep 'inet ' | awk '{print $2}'
+
+
+Cluster Set Up: first time! 
+
+1. ensure the state files /monitor/host.properties and proxyServer/savedConsistantHashing are BOTH DELETED.
+2. ssh into another node run monitorFirstTime script
+
+sleep (3)
+
+3. back to orginal node, start up proxy
+
+4. serversql ite/StartAll.bash
+
+5. loadTest1 (populate DBs)
+
+
+Cluster Shut Down: (BYE BYE!)
+1. run ./shutdown_all-OldAge (shutdown all scrip but with 10 seconds between each node)
+1. remove host.properties file (destory the state)
+for x=6 
+2. shutdown proxy and shut down monitor
+
+3. remove savedConsistantHashing file
