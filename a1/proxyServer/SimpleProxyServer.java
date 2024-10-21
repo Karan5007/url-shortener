@@ -19,21 +19,12 @@ public class SimpleProxyServer {
 
 	public static void main(String[] args) throws IOException {
 
-		InetAddress startAddress = InetAddress.getLocalHost();
-		String addressAssString = startAddress.getHostAddress();
-		System.out.println("I am running on: " + addressAssString);
-
-		//TODO TEST MONITOR LOGIC
-		System.out.println("start of if statement");
 		boolean firstTime = false;
 		if (args.length > 0) {
-			// Parse the first argument as a boolean (true/false)
 			firstTime = Boolean.parseBoolean(args[0]);
-			System.out.println("inside if statement, boolean value is" + firstTime);
 		}
 
 		if (firstTime) {
-			System.out.println("if statement for adding to hostfile");
 			String addressAsString = "";
 			try {
 				InetAddress currentAddress = InetAddress.getLocalHost();
@@ -46,22 +37,17 @@ public class SimpleProxyServer {
 
 		}
 
-		 int MONITOR_INTERVAL = 10; // Monitor interval in seconds
+		int MONITOR_INTERVAL = 10; // Monitor interval in seconds
 
 		ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 		scheduler.scheduleAtFixedRate(SimpleProxyServer::monitorTheMonitor, 0, MONITOR_INTERVAL, TimeUnit.SECONDS);
 
 		try {
-			String host = "127.0.0.1"; // commenting this out, since we want diffrent hosts
 			int remoteport = 8082;
 			int localport = 8081;
-			// Print a start-up message
-			// System.out.println("Starting proxy for " + host + ":" + remoteport + " on
-			// port " + localport); // old print statement
+			
 			System.out.println("Starting proxy for hosting  on port remote port: " + remoteport
 					+ "and local port " + localport);
-
-			// And start running the server
 
 			runServer(remoteport, localport); // never returns
 		} catch (Exception e) {
@@ -100,9 +86,8 @@ public class SimpleProxyServer {
 			}
 		}
 
-		if (MonitorIp.equals("")) { // no montior found
-			return; // TODO: maybe to the bottom instead?
-			// restart = true;
+		if (MonitorIp.equals("")) { // no monitor found
+			return; 
 		}
 
 		// run bash script
@@ -148,14 +133,13 @@ public class SimpleProxyServer {
 			}
 
 			String og_monitor_ip = MonitorIp;
-			// run bash scrip to restart Monitor
+			// run bash script to restart Monitor
 			for (Map.Entry<String, String> entry : availableNodes.entrySet()) {
 				String[] ipAndService = entry.getKey().split(":");
 				String nodeIP = ipAndService[0]; // Extract IP
 				String service = ipAndService[1]; // Extract Service type
 				String status = entry.getValue(); // Get current status (alive/failed)
 
-				// TODO: add the case where there is only one
 				if (!(nodeIP.equals(addressAsString))){
 					if (startUpMonitorScript(nodeIP)) {
 						System.out.println("Bash script executed on node: (" + nodeIP + ")");
@@ -175,9 +159,6 @@ public class SimpleProxyServer {
 						System.err.println("Failed to run bash script on node: " + nodeIP + ")");
 					}
 				}
-				
-				// Execute the bash script on the chosen node
-				// In this case, we'll run the script locally for demonstration purposes
 
 			}
 
@@ -193,18 +174,6 @@ public class SimpleProxyServer {
 			// run bash scrip to restart
 		}
 
-		// if on the exit value of the bash script
-
-		// CASE: if exit != 0 (the monitor is not running)
-
-		// remove the monitor from the hostFile
-
-		// look for an alternative place to revive the monitor
-
-		// start the monitor
-
-		// add the monitor to hostFile
-
 	}
 
 	private static boolean startUpMonitorScript(String nodeIP) {
@@ -213,12 +182,10 @@ public class SimpleProxyServer {
 			Process p = new ProcessBuilder("./Orchestration/startMonitorRemote.bash", nodeIP).start();
 			boolean finished = p.waitFor(10, TimeUnit.SECONDS); // Wait for a maximum of 10 seconds
 			if (!finished) {
-				// System.out.println("!finsih loop, not enough time to execute");
 				p.destroy();
 				return false;
 			}
 			int exitCode = p.exitValue();
-			// System.out.println("exit value = " + exitCode);
 			return exitCode == 0;
 
 		} catch (IOException | InterruptedException e) {
@@ -234,8 +201,6 @@ public class SimpleProxyServer {
 		// Create a ServerSocket to listen for connections with
 		ServerSocket ss = new ServerSocket(localport);
 
-		// final byte[] request = new byte[1024];
-		// byte[] reply = new byte[4096];
 		ch = loadObject("savedConsistentHashing");
 		if (ch == null) {
 			ch = new ConsistentHashing();
@@ -256,14 +221,14 @@ public class SimpleProxyServer {
 			} catch (IOException e) {
 				System.err.println(e);
 			}
-		} // end of while(true) loop.
-	} // end of runServer function
+		} 
+	} 
 
 	static class ProxyTask implements Runnable {
 		private Socket client = null;
-		private String host = null; // node
+		private String host = null; 
 		private String replicationHost = null;
-		private int remoteport; // port on node
+		private int remoteport; 
 		ConsistentHashing ch;
 
 		public ProxyTask(Socket clientSocket, int remoteport, ConsistentHashing ch) {
@@ -281,7 +246,7 @@ public class SimpleProxyServer {
 
 				// Create a connection to the remote server
 
-				// read from the client
+				// read/write client
 				final InputStream streamFromClient = client.getInputStream();
 				final OutputStream streamToClient = client.getOutputStream();
 
@@ -327,7 +292,7 @@ public class SimpleProxyServer {
 						} 
 						ch.printCircle();
 						return;
-					} else if (parsedRequest.method == "remove") { 
+					} else if (parsedRequest.method == "remove") { //For testing purposes
 						ch.removeNode(parsedRequest.shortResource); 
 						saveObject(ch, "savedConsistentHashing");
 						try {
@@ -337,7 +302,7 @@ public class SimpleProxyServer {
 							e.printStackTrace();
 						}  
 						return;
-					} else if (parsedRequest.method == "addWithExistingData") {
+					} else if (parsedRequest.method == "addWithExistingData") { 
 						System.out.println("added node:  " + parsedRequest.shortResource);
 						int hash = ch.addNodeWithExistingData(parsedRequest.shortResource);
 						int nextHash = ch.getNextHash(hash);
@@ -364,10 +329,7 @@ public class SimpleProxyServer {
 						BufferedReader inFromServer = new BufferedReader(new InputStreamReader(streamFromServer));
 
 						String responseLine;
-						while ((responseLine = inFromServer.readLine()) != null) {
-							System.out.println("Response from server: " + responseLine);
-							// Break if you've read all the headers (the server will send an empty line to
-							// indicate the end of headers)
+						while ((responseLine = inFromServer.readLine()) != null) {							
 							if (responseLine.isEmpty()) {
 								break;
 							}
@@ -386,8 +348,6 @@ public class SimpleProxyServer {
 						}  
 						String ipAddress = ch.getIpAddress(hashes.get(0));
 						String nextIPAddress = ch.getIpAddress(hashes.get(1));
-
-						System.out.println("first next ip addr = " + hashes);
 
 						try {
 							server = new Socket(nextIPAddress, this.remoteport);
@@ -412,9 +372,6 @@ public class SimpleProxyServer {
 
 						String responseLine;
 						while ((responseLine = inFromServer.readLine()) != null) {
-							System.out.println("Response from server: " + responseLine);
-							// Break if you've read all the headers (the server will send an empty line to
-							// indicate the end of headers)
 							if (responseLine.isEmpty()) {
 								break;
 							}
@@ -435,16 +392,12 @@ public class SimpleProxyServer {
 						}
 						final InputStream streamFromServer2 = server.getInputStream();
 						final OutputStream streamToServer2 = server.getOutputStream();
-						System.out.println("next ip addr = " + nextIPAddress);
 						sendRemoveNodeRequest(nextIPAddress, streamToServer2);
 
 						BufferedReader inFromServer2 = new BufferedReader(new InputStreamReader(streamFromServer2));
 
 						responseLine = "";
 						while ((responseLine = inFromServer2.readLine()) != null) {
-							System.out.println("Response from server: " + responseLine);
-							// Break if you've read all the headers (the server will send an empty line to
-							// indicate the end of headers)
 							if (responseLine.isEmpty()) {
 								break;
 							}
@@ -487,7 +440,7 @@ public class SimpleProxyServer {
 					final InputStream streamFromServer = server.getInputStream();
 					final OutputStream streamToServer = server.getOutputStream();
 
-					// Forward the request based on the parsed type, we know this wont cause an
+					// Forward the request based on the parsed type, we know this won't cause an
 					// error since we error checked this
 					if (parsedRequest != null && parsedRequest.method.equals("PUT")) {
 						handlePutRequest(parsedRequest, streamToServer, ch.hash(url), 'M');
@@ -514,19 +467,14 @@ public class SimpleProxyServer {
 
 							byte[] reply = new byte[4096];
 							int bytesRead;
-							// StringBuilder responseBuilder = new StringBuilder();
-							// server.setSoTimeout(50);
+							
 							while ((bytesRead = streamFromServer2.read(reply)) != -1) {
 								// reading response of the replica
 								String chunk = new String(reply, 0, bytesRead);
 								streamToClient.write(reply, 0, bytesRead);
 								streamToClient.flush();
-
-								// if (chunk.contains("</html>")) {
-								// break;
-								// }
+								System.out.println("chunk from server" + chunk);
 							}
-							System.out.println("while loop exited for replica");
 
 						}
 
@@ -536,42 +484,15 @@ public class SimpleProxyServer {
 					}
 
 					System.out.println("Received for response from URL shortener.");
-					// Read the server's responses
-					// and pass them back to the client.
+					
 					byte[] reply = new byte[4096];
 					int bytesRead;
-					// StringBuilder responseBuilder = new StringBuilder();
-					// server.setSoTimeout(50);
 					while ((bytesRead = streamFromServer.read(reply)) != -1) {
 						String chunk = new String(reply, 0, bytesRead);
 						streamToClient.write(reply, 0, bytesRead);
 						streamToClient.flush();
-						// if (chunk.contains("</html>")) {
-						// break;
-						// }
 					}
 					System.out.println("while loop exited");
-					// server.setSoTimeout(1);;
-					// while ((bytesRead = streamFromServer.read(reply)) != -1) {
-					// String chunk = new String(reply, 0, bytesRead);
-					// streamToClient.write(reply, 0, bytesRead);
-					// streamToClient.flush();
-					// if (chunk.contains("</html>")) {
-					// break;
-					// }
-					// }
-					// while(true){
-					// //System.out.println("Sending response back to client.");
-					// }
-
-					// The server closed its connection to us, so we close our
-					// connection to our client.
-
-					// Close the streams and sockets
-					// streamToClient.close();
-					// streamToServer.close();
-					// client.close();
-					// server.close();
 				}
 			} catch (IOException e) {
 				System.err.println(e);
@@ -579,17 +500,14 @@ public class SimpleProxyServer {
 				try {
 					if (server != null){
 						server.close();
-						// System.out.println("shut down server");
 					}
 						
 					if (Replication_server != null){
 						Replication_server.close();
-						// System.out.println("shut down replica server");
 					}
 						
 					if (client != null)
 						client.close();
-						// System.out.println("shut down client connection");
 				} catch (IOException e) {
 					System.err.println("Error closing sockets: " + e.getMessage());
 				}
@@ -598,10 +516,6 @@ public class SimpleProxyServer {
 	} // end of mulithread class
 
 	private static ParsedRequest parseRequest(String inputLine) {
-		// copying what we had form the node code.
-		System.out.println("input:  " + inputLine);
-		// Pattern premoveExisting =
-		// Pattern.compile("^PUT\\s+/\\?method=failedNode&ipAddr=(\\S+)$");
 		Pattern premoveExisting = Pattern.compile("^PUT\\s+/\\?method=failedNode&ipAddr=(\\S+)\\s+(\\S+)$");
 
 		Pattern paddExisting = Pattern.compile("^PUT\\s+/\\?method=addedNode&ipAddr=(\\S+)\\s+(\\S+)$");
@@ -640,7 +554,7 @@ public class SimpleProxyServer {
 			return new ParsedRequest("removeWithExistingData", shortResource, null, null);
 		}
 
-		return null; // Unknown request type, edit this later to add new servers/delete old servers.
+		return null; 
 	}
 
 	// Handle PUT request
@@ -680,12 +594,11 @@ public class SimpleProxyServer {
 		outToServer.flush();
 	}
 
-	// Handle GET request
 	private static void handleGetRequest(ParsedRequest parsedRequest, OutputStream streamToServer) throws IOException {
 		PrintWriter outToServer = new PrintWriter(streamToServer);
 		outToServer.println("GET /" + parsedRequest.shortResource + " " + parsedRequest.httpVersion);
 		outToServer.println("Host: " + parsedRequest.shortResource);
-		outToServer.println(); // End of headers
+		outToServer.println(); 
 		outToServer.flush();
 	}
 
@@ -711,10 +624,10 @@ public class SimpleProxyServer {
 
 	// Class to store parsed request information, alt for adding new servers
 	static class ParsedRequest {
-		String method; // alt ADD/DESTORY
-		String shortResource; // alt: new hostName (ip adder)
-		String longResource; // alt: starting value
-		String httpVersion; // alt: ending value
+		String method; 
+		String shortResource; 
+		String longResource; 
+		String httpVersion; 
 
 		ParsedRequest(String method, String shortResource, String longResource, String httpVersion) {
 			this.method = method;
