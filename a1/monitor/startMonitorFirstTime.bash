@@ -4,7 +4,7 @@ javac HostFileManager.java
 javac MonitorApp.java
 date +"%A, %B %d, %Y %H:%M:%S.%3N" >> monitor-logging.txt
 echo 'New Session Launched' >> monitor-logging.txt
-java MonitorApp true >> >> monitor-logging.txt 2>&1 & disown
+java MonitorApp true #>> monitor-logging.txt 2>&1 & disown
 # Literally 1984.
 
 

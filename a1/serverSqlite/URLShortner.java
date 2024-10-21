@@ -58,17 +58,13 @@ public class URLShortner {
 		database = new URLShortnerDB();
 		ipAddress = args[0];
 		
-		//TODO: send a signal to connect 
 		String host = "142.1.46.25"; // Ip address of simply proxy server.
-		//  dh2026pc22 = "142.1.46.25"
-		// docker Ubuntu1 = 172.20.0.2
-		// dh2026pc23 = ?
+		
 		
 		if (args.length > 1) {
 			// Parse the second argument as, ipadder for server.
 			host = args[1];
 			System.out.println("ipadder of proxy: " + host);
-			// host = ipAddress;
 		}
 		
 		
@@ -81,19 +77,9 @@ public class URLShortner {
 		//open up our port to listen
 		try {
 			serverConnect = new ServerSocket(PORT);
-			// logInfo("Server started.\nListening for connections on port : " + PORT + " ...\n");
-			
-			
-			// ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(1);
-        	// scheduler.scheduleAtFixedRate(() -> connectToProxy(host, proxyPort, ipAddress), 0, 60, TimeUnit.SECONDS); // send awake signal every 60 seconds
-
-
 
 			// we listen until user halts server execution
 			while (true) {
-				if (verbose) { 
-					// logInfo("Connection opened. (" + new Date() + ")"); 
-					}
 
 				final Socket clientSocket = serverConnect.accept();
 				threadPool.execute(()-> handle(clientSocket));
@@ -196,7 +182,7 @@ public class URLShortner {
 
 				out.println("HTTP/1.1 200 OK");
 				
-				out.println(result + "Server:sfdsfdsfdsf : 1.0");
+				out.println("Server: Java HTTP Server/Shortner : 1.0");
 				out.println("Date: " + new Date());
 				out.println("Content-type: text/html");
 				out.println("Content-length: " + result.length());
@@ -204,8 +190,6 @@ public class URLShortner {
 				out.println();
 				out.flush();
 	
-	
-				//sendResponse(out, result, "HTTP/1.1 200 OK", REDIRECT_RECORDED);
 				return;
 			}
 
@@ -220,14 +204,13 @@ public class URLShortner {
 
 				out.println("HTTP/1.1 200 OK");
 				
-				out.println(nextIpAddr + "Server:sddd : 1.0");
+				out.println("Server: Java HTTP Server/Shortner : 1.0");
 				out.println("Date: " + new Date());
 				out.println("Content-type: text/html");
 				out.println("Content-length: 51");
 				out.println();
 				out.flush();
 	
-				//sendResponse(out, dataOut, nextIpAddr + "HTTP/1.1 200 OK", REDIRECT_RECORDED);
 				return;
 			}
 	
@@ -288,13 +271,11 @@ public class URLShortner {
 					longResource = null;
 				}
 				
-				System.out.println("Sending this to client: " + longResource);
 				if (longResource != null) {
 					sendResponse(out, dataOut, "HTTP/1.1 307 Temporary Redirect", REDIRECT, longResource);
 				} else {
 					sendResponse(out, dataOut, "HTTP/1.1 404 File Not Found", FILE_NOT_FOUND);
 				}
-				System.out.println("Sending this to client: " + longResource);
 
 				try {
 					if (in != null) in.close();
@@ -347,9 +328,7 @@ public class URLShortner {
 			} catch (Exception e2) {
 				System.err.println("Error closing streams or socket: " + e2.getMessage());
 			}
-			
-		// 	// closeSocket();  
-		// 	// cleanUpLogs();  
+			 
 		}
 	}
 	
@@ -431,7 +410,6 @@ public class URLShortner {
 			// Send PUT requests to the new node's main and replica databases
 			output += sendPutRequest(ipAddress, shortURL, longURL, rowHash, "M");  // 'M' for main
 			database.saveToReplica(shortURL, longURL, rowHash);
-			// sendPutRequest(ipAddress, shortURL, longURL, rowHash, "R");  // 'R' for replica
 		}
 		
 		// Delete transferred rows from the original node's main DB
