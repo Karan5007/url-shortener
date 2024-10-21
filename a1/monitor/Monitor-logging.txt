@@ -1,0 +1,30 @@
+Error connecting to Proxy (142.1.46.25): Connection refused
+Proxy failed. Running recovery script on an available node...
+Bash script executed on node: (142.1.46.25)
+og node adder: 142.1.46.25
+old entry deleted.
+new node adder: 142.1.46.25
+new entry added
+Skipping DBnode (142.1.46.25) as it is already marked as failed.
+Monitor not to be monitored! @ 142.1.46.26
+Proxy (142.1.46.25) is alive!
+Skipping DBnode (142.1.46.25) as it is already marked as failed.
+Monitor not to be monitored! @ 142.1.46.26
+Proxy (142.1.46.25) is alive!
+Skipping DBnode (142.1.46.25) as it is already marked as failed.
+Monitor not to be monitored! @ 142.1.46.26
+Proxy (142.1.46.25) is alive!
+Skipping DBnode (142.1.46.25) as it is already marked as failed.
+Monitor not to be monitored! @ 142.1.46.26
+Proxy (142.1.46.25) is alive!
+Skipping DBnode (142.1.46.25) as it is already marked as failed.
+Monitor not to be monitored! @ 142.1.46.26
+Error connecting to Proxy (142.1.46.25): Connection refused
+Proxy failed. Running recovery script on an available node...
+Bash script executed on node: (142.1.46.25)
+og node adder: 142.1.46.25
+old entry deleted.
+new node adder: 142.1.46.25
+new entry added
+Skipping DBnode (142.1.46.25) as it is already marked as failed.
+Monitor not to be monitored! @ 142.1.46.26
