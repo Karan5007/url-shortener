@@ -1,28 +1,27 @@
 #!/bin/bash
 
-CWD = 'pwd'
+CWD=`pwd`
 
-rm monitor/hosts.properties
-rm proxyServer/savedConsistentHashing
+rm "$CWD/monitor/hosts.properties"
+rm "$CWD/proxyServer/savedConsistentHashing"
 # Assuming that pc22 is our home PC
-ssh -o StrictHostKeyChecking=no dh2026pc23 "cd $CWD/monitor && ./startMonitorFirstTime.bash;
+ssh -o StrictHostKeyChecking=no dh2010pc13 "cd $CWD/monitor && ./startMonitorFirstTime.bash >> monitor-logging.txt 2>&1 & disown"
 
 sleep 3
 
-echo "Monitor started with on dh2026pc23
+echo "Monitor started with on dh2010pc13"
 
-cd proxyServer
 echo "Starting proxy server..."
-./runProxyServer.bash &
+"$CWD/proxyServer/runProxyServer.bash" &
 PROXY_PID=$!
 echo "Proxy server started with PID $PROXY_PID"
 sleep 3
 
-cd ../serverSqlite
 echo "Starting all hosts..."
-./start_all.bash &
+"$CWD/serverSqlite/start_all.bash" &
 HOSTS_PID=$!
 echo "All hosts started with PID $HOSTS_PID"
+
 sleep 3
 
 
