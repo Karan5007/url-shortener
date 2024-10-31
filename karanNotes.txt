@@ -3,7 +3,6 @@ pkill -f 'java SimpleProxyServer' ; echo $?
 pkill -f 'java MonitorApp' ; echo $?
 rm hosts.properties
 pkill -f 'URLShortner' ; echo $?
-
 ifconfig eno1 | grep 'inet ' | awk '{print $2}'
 
 
