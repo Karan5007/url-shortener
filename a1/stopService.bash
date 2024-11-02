@@ -14,7 +14,8 @@ do
     echo "Monitor stopped and proxy shut down with on dh2010pc13 $i times"
 done
 
-"$CWD/serverSqlite/shutdown_all.bash" 
+(cd "$CWD/serverSqlite" && ./shutdown_all.bash)
+
 echo "shutdown all hosts..."
 
 rm $CWD/proxyServer/savedConsistentHashing

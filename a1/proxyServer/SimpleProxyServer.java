@@ -11,9 +11,28 @@ import java.util.regex.Pattern;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
+import java.util.logging.Level;
 
 public class SimpleProxyServer {
+	private static final Logger logger = Logger.getLogger(SimpleProxyServer.class.getName());
+
+	static {
+        try {
+            FileHandler fileHandler = new FileHandler("proxy_logs.txt", true); // 'true' for appending
+            fileHandler.setFormatter(new SimpleFormatter()); // You can customize the formatter if desired
+            logger.addHandler(fileHandler);
+            logger.setLevel(Level.ALL);
+        } catch (IOException e) {
+            System.err.println("Failed to set up logger: " + e.getMessage());
+        }
+    }
+
+	public static void logMessage(String message) {
+        logger.info(message);
+    }
 
 	public static HostFileManager hostFileManager = new HostFileManager();
 
@@ -263,15 +282,30 @@ public class SimpleProxyServer {
 					ParsedRequest parsedRequest = parseRequest(inputLine);
 
 					if (parsedRequest == null) {
-						PrintWriter out = new PrintWriter(streamToClient);
-						out.print("HTTP/1.1 400 Bad Request\r\n");
-						out.print("Content-Type: text/plain\r\n");
-						out.print("\r\n");
-						out.print("Invalid request format. The request could not be parsed.\r\n");
-						out.flush();
-						client.close();
-						return;
+						if(inputLine.contains("PUT")){
+							PrintWriter out = new PrintWriter(streamToClient);
+							out.print("HTTP/1.1 400 Bad PUT Request\r\n");
+							out.print("Content-Type: text/plain\r\n");
+							out.print("\r\n");
+							out.print("Invalid request format. The request could not be parsed.\r\n");
+							out.flush();
+							client.close();
 
+							logMessage("HTTP/1.1 400 Bad PUT Request\r\nContent-Type: text/plain\r\n\r\nInvalid request format. The request could not be parsed.\r\n");
+							return;
+						} else if (inputLine.contains("GET")){
+							PrintWriter out = new PrintWriter(streamToClient);
+							out.print("HTTP/1.1 404 Bad GET Request\r\n");
+							out.print("Content-Type: text/plain\r\n");
+							out.print("\r\n");
+							out.print("Invalid request format. The request could not be parsed.\r\n");
+							out.flush();
+							client.close();
+							logMessage("HTTP/1.1 404 Bad GET Request\r\nContent-Type: text/plain\r\n\r\nInvalid request format. The request could not be parsed.\r\n");
+
+							return;
+						}
+						
 					}
 
 					System.out.println("Parsed request: Method = " + parsedRequest.method +
@@ -432,6 +466,8 @@ public class SimpleProxyServer {
 								+ this.remoteport + ":\n" + e + "\n");
 						out.flush();
 						client.close();
+					
+						logMessage("HTTP/1.1 400 Bad PUT Request\r\nContent-Type: text/plain\r\n\r\nInvalid request format. The request could not be parsed.\r\n");
 
 						return;
 					}
@@ -457,6 +493,8 @@ public class SimpleProxyServer {
 								out.flush();
 								client.close();
 								server.close();
+
+								logMessage("HTTP/1.1 400 Bad PUT Request\r\nContent-Type: text/plain\r\n\r\nInvalid request format. The request could not be parsed.\r\n");
 								return;
 							}
 
@@ -477,20 +515,28 @@ public class SimpleProxyServer {
 							}
 
 						}
-
+						
 					} else if (parsedRequest != null && parsedRequest.method.equals("GET")) {
 						handleGetRequest(parsedRequest, streamToServer);
-
 					}
 
 					System.out.println("Received for response from URL shortener.");
-					
+
 					byte[] reply = new byte[4096];
 					int bytesRead;
+					ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
+
 					while ((bytesRead = streamFromServer.read(reply)) != -1) {
-						String chunk = new String(reply, 0, bytesRead);
-						streamToClient.write(reply, 0, bytesRead);
-						streamToClient.flush();
+						responseBuffer.write(reply, 0, bytesRead);
+
+						String responseString = responseBuffer.toString("UTF-8");
+						if (responseString.contains("</html>")) { 
+							streamToClient.write(responseBuffer.toByteArray()); 
+							logMessage(responseString); 
+							streamToClient.flush();
+
+							responseBuffer.reset();
+						}
 					}
 					System.out.println("while loop exited");
 				}

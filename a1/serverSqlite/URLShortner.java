@@ -236,7 +236,7 @@ public class URLShortner {
 					}
 				}
 	
-				sendResponse(out, dataOut, "HTTP/1.1 200 OK", REDIRECT_RECORDED);
+				sendResponse(out, dataOut, "HTTP/1.1 201 OK", REDIRECT_RECORDED);
 
 				try {
 					if (in != null) in.close();
