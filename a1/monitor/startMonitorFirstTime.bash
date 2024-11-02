@@ -2,13 +2,13 @@
 
 javac HostFileManager.java 
 javac MonitorApp.java
-echo '#########################################################################################################' >> monitor-logging.txt
-date +"%A, %B %d, %Y %H:%M:%S.%3N" >> monitor-logging.txt
-echo 'New Session Launched' >> monitor-logging.txt
-echo '#########################################################################################################' >> monitor-logging.txt
-java MonitorApp true >> monitor-logging.txt 2>&1 & disown
+# echo '#########################################################################################################' >> monitor-logging.txt
+# date +"%A, %B %d, %Y %H:%M:%S.%3N" >> monitor-logging.txt
+# echo 'New Session Launched' >> monitor-logging.txt
+# echo '#########################################################################################################' >> monitor-logging.txt
+java MonitorApp true >> /dev/null 2>&1 & disown
 # Literally 1984.
-
+# java MonitorApp true  & disown
 
 # # Compile HostFileManager first (assumes you're running this script from the 'monitor' directory)
 # javac -cp ../hostfilemanager ../hostfilemanager/HostFileManager.java

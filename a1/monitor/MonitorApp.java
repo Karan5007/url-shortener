@@ -1,14 +1,21 @@
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 // import java.net.ServerSocket;
 import java.net.Socket;
+import java.text.SimpleDateFormat;
 import java.net.InetAddress;
+import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
+
 
 
 // import a1.hostfilemanager.HostFileManager;
@@ -19,7 +26,8 @@ public class MonitorApp {
     private static HostFileManager hostFileManager = new HostFileManager();
     private static String ProxyIp = "";
     public static boolean firstTime = false;
-
+    static PrintWriter MonitorLogger = null;
+    private static SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 
 
@@ -37,11 +45,15 @@ public class MonitorApp {
                 hostFileManager.addHost(addressAsString, "Monitor");    
             } catch (IOException e) {
                 System.err.println("Error reading hosts file: " + e.getMessage());
+                logError("Error reading hosts file: " + e.getMessage());
                 return;
             }
 
             
         }
+
+        initMonitorLogger();
+
         // Use a ScheduledExecutor to periodically check the nodes
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         scheduler.scheduleAtFixedRate(MonitorApp::checkNodes, 0, MONITOR_INTERVAL, TimeUnit.SECONDS);
@@ -55,26 +67,12 @@ private static void checkNodes() {
     try {
         nodes = hostFileManager.readHosts(); // Retrieve nodes from hostFile with their statuses
     } catch (IOException e) {
-        System.err.println("Error reading hosts file: " + e.getMessage());
+        String message = "Error reading hosts file: " + e.getMessage();
+        System.err.println(message);
+        logError(message);
         return;
     }
-    // String filePath = "hosts.properties"; // Adjust the path if needed
 
-    //     System.out.println("starting to output file: ");
-    //     // Use BufferedReader to read the file
-    //     try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-    //         String line;
-    //         // Read the file line by line and print each line
-    //         while ((line = br.readLine()) != null) {
-    //             System.out.println(line);
-    //         }
-    //     } catch (IOException e) {
-    //         // Handle any IO exceptions (e.g., file not found)
-    //         System.out.println("Error reading file: " + e.getMessage());
-    //     }
-
-    //     System.out.println("end of output file: ");
-    // Iterate over the nodes and monitor each one
     for (Map.Entry<String, String> entry : nodes.entrySet()) {
         // The key is in the format "IP:Service"
         String[] ipAndService = entry.getKey().split(":");
@@ -86,12 +84,17 @@ private static void checkNodes() {
         if (status.equals("alive") && !(service.equals("Monitor"))) {
             monitorNode(nodeIP, service);  // Monitor this IP:Service combination
         } else if (service.equals( "Monitor")) {
+            String message = "Monitor not to be monitored! @ " + nodeIP;
+            System.out.println(message);
+            logInfo(message);
             
-            System.out.println("Monitor not to be monitored! @ " + nodeIP);
 
         }else {
             // Skip nodes marked as "failed"
-            System.out.println("Skipping " + service + " (" + nodeIP + ") as it is already marked as failed.");
+            String message = "Skipping " + service + " (" + nodeIP + "as it is already marked as failed.";
+            System.out.println(message);
+            logInfo(message);
+            
         }
     }
 }
@@ -106,7 +109,9 @@ private static void monitorNode(String ip, String name) {
         try {
             hostFileManager.updateHostStatus(ip, name, "failed");
         } catch (IOException e) {
-            System.err.println("Error updating host status: " + e.getMessage());
+            String message = "Error updating host status: " + e.getMessage();
+            System.err.println(message);
+            logError(message);
         }
         // Notify the proxy and mark the node as "failed"
         if (name.equals("DBnode")) {
@@ -117,7 +122,9 @@ private static void monitorNode(String ip, String name) {
 
     } else {
         // Log that the node is alive
-        System.out.println(name + " (" + ip + ") is alive!");
+        String message = name + " (" + ip + ") is alive!";
+        System.out.println(message);
+        logInfo(message);
 
         // Update ProxyIp if the service is Proxy
         // if (name.equals("Proxy")) {
@@ -148,6 +155,7 @@ private static void monitorNode(String ip, String name) {
         } catch (IOException e) {
             // Connection failed, node is not responding
             System.err.println("Error connecting to " + name + " (" + ip + "): " + e.getMessage());
+            logError("Error connecting to " + name + " (" + ip + "): " + e.getMessage());
             return false;
         } finally {
             try {
@@ -156,6 +164,7 @@ private static void monitorNode(String ip, String name) {
                 }
             } catch (IOException e) {
                 System.err.println("Error closing connection: " + e.getMessage());
+                logError("Error closing connection: " + e.getMessage());
             }
         }
     }
@@ -170,6 +179,7 @@ private static void monitorNode(String ip, String name) {
 			nodes = hostFileManager.readHosts(); // Retrieve nodes from hostFile with their statuses
 		} catch (IOException e) {
 			System.err.println("Error reading hosts file: " + e.getMessage());
+            logError("Error reading hosts file: " + e.getMessage());
 			return;
 		}
 		// find monitor iP
@@ -180,6 +190,7 @@ private static void monitorNode(String ip, String name) {
 			String service = ipAndService[1]; // Extract Service type
 			String status = entry.getValue(); // Get current status (alive/failed)
             System.out.println("IP " + ListnodeIP + " service: " + service );
+            logInfo("IP " + ListnodeIP + " service: " + service );
 			// Only monitor nodes that are currently marked as "alive"     
 			if (service.equals("Proxy")) {
 				ProxyIP = ListnodeIP ;
@@ -189,10 +200,12 @@ private static void monitorNode(String ip, String name) {
 
 
         System.out.println("DBnode failed. Notifying Proxy...");
+        logInfo("DBnode failed. Notifying Proxy...");
 
         // String proxyIP = "192.168.1.11"; // Assume the Proxy's IP is known
         int proxyPort = 8081;
         System.out.println("sending to server at :" + ProxyIP + "and port: " + proxyPort);
+        logInfo("sending to server at :" + ProxyIP + "and port: " + proxyPort);
         try (Socket proxySocket = new Socket(ProxyIP, proxyPort)) {
 
             String message =  "PUT /?method=failedNode&ipAddr=" + DBnodeIP + " HTTP/1.1";
@@ -200,8 +213,10 @@ private static void monitorNode(String ip, String name) {
             proxySocket.getOutputStream().write(message.getBytes());
             proxySocket.getOutputStream().flush();
             System.out.println("Message sent to Proxy: " + message);
+            logInfo("Message sent to Proxy: " + message);
         } catch (IOException e) {
             System.err.println("FATAL! Failed to notify Proxy: " + e.getMessage());
+            logError("FATAL! Failed to notify Proxy: " + e.getMessage());
         }
     }
     //help its so over
@@ -209,6 +224,7 @@ private static void monitorNode(String ip, String name) {
     
     private static void handleProxyFailure(String og_proxyIP) {
         System.out.println("Proxy failed. Running recovery script on an available node...");
+        logInfo("Proxy failed. Running recovery script on an available node...");
         String addressAsString;
         // Get available nodes from the hostFile
         Map<String, String> availableNodes;
@@ -219,6 +235,7 @@ private static void monitorNode(String ip, String name) {
             
         } catch (IOException e) {
             System.err.println("Error reading hosts file: " + e.getMessage());
+            logError("Error reading hosts file: " + e.getMessage());
             return;
         }
 
@@ -234,27 +251,35 @@ private static void monitorNode(String ip, String name) {
             if (!(nodeIP.equals(addressAsString))){
                 if (runStartUpScript(nodeIP)) {
                     System.out.println("Bash script executed on node: (" + nodeIP + ")");
+                    logInfo("Bash script executed on node: (" + nodeIP + ")");
                     ProxyIp = nodeIP;
                     try {
-                        System.err.println("og node adder: " + og_proxyIP);
+                        // System.err.println("og node adder: " + og_proxyIP);
+                        // logError("og node adder: " + og_proxyIP);
                         hostFileManager.deleteHost(og_proxyIP,"Proxy");
                         System.out.println("old entry deleted.");
+                        logInfo("old entry deleted.");
         
                         System.out.println("new node adder: " + nodeIP);
+                        logInfo("new node adder: " + nodeIP);
+                        
                         hostFileManager.addHost(nodeIP, "Proxy");
                         System.out.println("new entry added");
+                        logInfo("new entry added");
                     } catch (IOException e) {
             
                         System.err.println("Error editing hosts file: " + e.getMessage());
-                        System.out.println("Error editing hosts file: " + e.getMessage());   
+                        logError("Error editing hosts file: " + e.getMessage());  
                     }
                     
                     return; // Break after successfully running the script on one node
                 } else {
                     System.err.println("Failed to run bash script on node: (" + nodeIP + ")");
+                    logError("Failed to run bash script on node: (" + nodeIP + ")");
                 }
             }else{
                 System.out.println("Cannot run proxy and Montior on the same node");
+                logInfo("Cannot run proxy and Montior on the same node");
             }
             
             // Execute the bash script on the chosen node
@@ -262,6 +287,8 @@ private static void monitorNode(String ip, String name) {
             
         }
         System.err.println("FATAL! Failed to run startup script on all nodes! No Proxy Server is running!");
+        logError("FATAL! Failed to run startup script on all nodes! No Proxy Server is running!");
+
     }
 
     // Method to run a bash script locally 
@@ -279,7 +306,33 @@ private static void monitorNode(String ip, String name) {
 
         } catch (IOException | InterruptedException e) {
             System.err.println("Error running bash script: " + e.getMessage());
+            logError("Error running bash script: " + e.getMessage());
             return false;
         }
     }
+    
+    private static void initMonitorLogger() {
+
+		String logFileName = "monitorLogger.txt";
+	
+		try {
+			MonitorLogger = new PrintWriter(new BufferedWriter(new FileWriter(logFileName, true)));
+		} catch (IOException e) {
+			logError("Error initializing server logger: " + e.getMessage());
+		}
+	}
+
+	private static void logError(String message) {
+		if (MonitorLogger != null) {
+			MonitorLogger.println("[" + sdf.format(new Date()) + "] [ERROR] " + message);
+			MonitorLogger.flush();
+		}
+	}
+	
+	private static void logInfo(String message) {
+		if (MonitorLogger != null) {
+			MonitorLogger.println("[" + sdf.format(new Date()) + "] [INFO] " + message);
+			MonitorLogger.flush();
+		}
+	}
 }
