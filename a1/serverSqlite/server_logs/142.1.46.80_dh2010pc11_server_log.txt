@@ -1,0 +1,28 @@
+[2024-10-31 15:25:34] [INFO] Server is starting...
+[2024-10-31 15:25:34] [INFO] Connected to proxy server at 142.1.46.81:8081
+[2024-10-31 15:25:34] [INFO] Sent awake signal to proxy server at 142.1.46.81:8081
+[2024-10-31 15:25:34] [ERROR] Server Connection error : Address already in use
+Log files and directory cleaned up.
+[2024-10-31 15:27:48] [INFO] Server is starting...
+[2024-10-31 15:27:48] [INFO] Connected to proxy server at 142.1.46.81:8081
+[2024-10-31 15:27:48] [INFO] Sent awake signal to proxy server at 142.1.46.81:8081
+[2024-10-31 15:27:48] [ERROR] Server Connection error : Address already in use
+Log files and directory cleaned up.
+[2024-10-31 15:29:50] [INFO] Server is starting...
+[2024-10-31 15:29:50] [INFO] Connected to proxy server at 142.1.46.81:8081
+[2024-10-31 15:29:50] [INFO] Sent awake signal to proxy server at 142.1.46.81:8081
+[2024-10-31 15:29:50] [ERROR] Server Connection error : Address already in use
+Log files and directory cleaned up.
+[2024-10-31 15:32:14] [INFO] Server is starting...
+[2024-10-31 15:32:14] [ERROR] Unable to connect to proxy server at 142.1.46.25:8081. Will retry...
+[2024-10-31 15:32:14] [ERROR] Server Connection error : Address already in use
+Log files and directory cleaned up.
+[2024-10-31 15:32:27] [INFO] Server is starting...
+[2024-10-31 15:32:27] [ERROR] Unable to connect to proxy server at 142.1.46.80:8081. Will retry...
+[2024-10-31 15:32:27] [ERROR] Server Connection error : Address already in use
+Log files and directory cleaned up.
+[2024-11-01 01:46:40] [INFO] Server is starting...
+[2024-11-01 01:46:41] [INFO] Connected to proxy server at 142.1.46.81:8081
+[2024-11-01 01:46:41] [INFO] Sent awake signal to proxy server at 142.1.46.81:8081
+[2024-11-01 01:46:41] [ERROR] Server Connection error : Address already in use
+Log files and directory cleaned up.
