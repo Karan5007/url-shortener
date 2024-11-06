@@ -1,0 +1,217 @@
+Total: 
+
+Perf Test (weight 15%): 10.5/12
+
+	10.5/12 PUT/GET/mixed requests
+		Performance ranked against your classmates systems. 
+		We will run LoadTest/ab/... with some workloads of our choosing.
+
+Development (weight 5%): 5/5
+
+	3/3 Code quality
+		[0] 1 Clean code. No commented out code, proper indentation
+		[0] 1 Proper Names. Classes, variables, functions
+		[0] 1 Structure. Proper use of classes, functions, resources
+
+	2/2 Git history
+		[0] 1 Proper commit messages
+		[0] 1 Clean git history. If branches are used, they must be merged on completion.
+
+Report (weight 25%): 27/27
+
+	17/17 Discussing the system's architecture
+		3/3 Diagram showing
+			[1] 1 Application system
+			[1] 1 Monitoring system
+			[1] 1 Data flow
+
+		14/14 Discussion of each of the following with respect to your system.
+			For each point, as appropriate, show an appropriate diagram, 
+                        list performance guarantees, discuss code/architecture choices.
+
+			Example: 
+
+			Availability: 
+				- the availability guarantees your system provides
+				- the architectural choices made to implement this
+
+			Data Partitioning:
+				- diagram explaining how data is partitioned
+				- outline how your code implements this, for example,
+  				  if you hash, then which hash algorithm
+
+
+			[1] 1 Consistensy
+			[1] 1 Availablity
+			[1] 1 Parition tolarance
+			[1] 1 Data paritioning
+			[1] 1 Data replication
+			[1] 1 Load balancing
+			[1] 1 Caching
+			[1] 1 Process disaster recovery
+			[1] 1 Data disaster recovery
+			[1] 1 Orchestration
+			[1] 1 Healthcheck
+			[1] 1 Horizontal scalability
+			[1] 1 Vertical scalability
+			[1] 1 Well formatted document
+
+	4/4 Discussing the system's performance
+		[1] 1 Graph showing performance of system under load1
+		[1] 1 Analysis of system performance under load1
+		[1] 1 Graph showing performance of system under load2
+		[1] 1 Analysis of system performance under load2
+	
+	4/4 Discussing the system's scalability
+		[1] 1 Number of hosts vs read requests per second
+		[1] 1 Number of hosts vs write requests per second
+		[1] 1 Number of hosts vs data stored
+
+	2/2 Discussion of the tools used during testing. Listing them 
+		is not enough. You must define each tool used, and how you used it
+
+Demo (weight 45%): 22/29
+
+	6/7 Functionality -> export PORT=group_port
+		3/3 Long to Short (PUT)
+			[1] 1 Good request. 201 -> curl -X PUT http://localhost:$PORT/?short=arnold\&long=google.com
+			[1] 1 Bad request. 400 -> curl -X PUT http://localhost:$PORT/?short=arnold
+			[1] 1 UI shows success or failure messages
+		3/3 Short to Long (GET)
+			[1] 1 Good request. 307 -> curl -X GET http://localhost:$PORT/arnold
+			[1] 1 Bad request. 404 -> curl -X GET http://localhost:$PORT/doesntExist
+			[1] 1 UI shows success or failure messages
+		0/1 UI design
+			[0] 1 Simple and clean user interface
+
+	5/5 Monitoring
+    		[1] 1 Monitoring system watching the health of the application system
+    		[1] 1 Monitoring system is fault tolerant
+    		[1] 1 UI showing the status of the hosts
+    		[1] 1 UI shows up to date status
+    		[1] 1 Simple and clean user interface
+
+	6/7 Disaster recovery
+		1/1 Load balancer recovery
+			[1] 1 Load balancer recovers/heals from a process dying
+
+		2/2 Application server recovery
+			[1] 1 Url shortner recovers/heals from a process dying
+			[1] 1 Url shortner recovers/heals from a host dying
+
+		3/4 Data recovery
+			[0] 1 Data is persistent after the system recovers/heals from a process dying
+			[1] 1 Data is persistent after the system recovers/heals from a host dying
+			[1] 1 The application responds after a database file gets corrupt
+			[1] 1 The application responds after a database file gets deleted
+
+	4/6 Scalability
+		[1] 1 System can be run from empty with n nodes
+		[0] 1 System scales from n to n+1 nodes with minimal intervention (demo script)
+		[0] 1 System scales from n to n+1 nodes without downtime
+		[1] 1 System makes good use of additional compute
+		[1] 1 System makes good use of additional storage
+		[1] 1 System makes good use of additional ram
+
+	1/4 Orchestration
+		[0] 1 Automate launching the cluster onto the given systems (scripts)
+		[0] 1 Automate adding a host to the cluster (script)
+		[0] 1 Automate removing a host from the cluster (script)
+		[1] 1 Automate shutdowning the cluster
+
+Individual Questions (weight 10%): 5/5
+
+	3/3 Pick one of the following per group member
+		Consistency (kumar168)
+			[1] 1 What does it mean for a system to be consistent
+			[1] 1 How is your consistency affected by adding hosts
+			[1] 1 How is your consistency affected by removing hosts
+		Availablity (abdul322)
+			[1] 1 What does it mean for a system to be available
+			[1] 1 How is your availablity affected by adding hosts
+			[1] 1 How is your availablity affected by removing hosts
+		Fault Tolerance (sing1871)
+			[1] 1 What does it mean for a system to be fault tolerant
+			[1] 1 How is your fault tolerance affected by adding hosts
+			[1] 1 How is your fault tolerance affected by removing hosts
+
+	2/2 Pick two of the following per group member
+		Disaster recovery (sing1871)
+			[1] 1 How does your system recover/heals from a host dying
+		Caching (abdul322)
+			[1] 1 How does your system leverage caching to improve performance
+		Horizontal scalability (abdul322)
+			[1] 1 How does your system leverage more hosts
+		Data paritioning (kumar168)
+			[1] 1 How is your data paritioned between hosts
+		Data replication (kumar168)
+			[1] 1 How is your data replicated between hosts
+		Monitoring system (sing1871)
+			[1] 1 How does your monitoring system monitor the status of your application system
+
+Members:
+kumar168
+abdul322
+sing1871
+
+
+LoadTest1 Average:
+Real: 6.374s
+User: 16.496s
+Sys: 3.388s
+
+
+LoadTest2 Average:
+Real: 4.083s
+User: 15.395s
+Sys: 2.962s
+
+
+
+
+kumar168@dh2010pc12:~/a1group05Demo/a1group05/a1/LoadTestDemo/LoadTest$ time ./LoadTest1.bash 
+0
+6
+
+real    0m6.810s
+user    0m16.673s
+sys     0m3.295s
+kumar168@dh2010pc12:~/a1group05Demo/a1group05/a1/LoadTestDemo/LoadTest$ time ./LoadTest1.bash 
+0
+6
+
+real    0m6.287s
+user    0m16.099s
+sys     0m3.434s
+kumar168@dh2010pc12:~/a1group05Demo/a1group05/a1/LoadTestDemo/LoadTest$ time ./LoadTest1.bash 
+1
+6
+
+real    0m6.026s
+user    0m16.715s
+sys     0m3.434s
+kumar168@dh2010pc12:~/a1group05Demo/a1group05/a1/LoadTestDemo/LoadTest$
+
+
+kumar168@dh2010pc12:~/a1group05Demo/a1group05/a1/LoadTestDemo/LoadTest$ time ./LoadTest2.bash
+0
+4
+
+real    0m4.198s
+user    0m15.141s
+sys     0m2.958s
+kumar168@dh2010pc12:~/a1group05Demo/a1group05/a1/LoadTestDemo/LoadTest$ time ./LoadTest2.bash
+0
+4
+
+real    0m4.032s
+user    0m15.206s
+sys     0m2.901s
+kumar168@dh2010pc12:~/a1group05Demo/a1group05/a1/LoadTestDemo/LoadTest$ time ./LoadTest2.bash
+0
+4
+
+real    0m4.019s
+user    0m15.837s
+sys     0m3.028s
+kumar168@dh2010pc12:~/a1group05Demo/a1group05/a1/LoadTestDemo/LoadTest$
