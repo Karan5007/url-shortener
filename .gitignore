@@ -14,3 +14,8 @@
 
 # OS addons 
 .DS_store # Macbook 
+
+a1/*_logs.txt
+a1/savedConsistentHashing
+a1/proxyServer/monitor-logging.txt
+a1/proxyServer/proxy_logs.txt*
